@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BongDrums · Rhythm Console</title>
+<link rel="icon" type="image/svg+xml" href="art/bd-mark.svg"><link rel="stylesheet" href="desk.css">
+</head>
+<body><a class="skip" href="#deck">Skip to the sequencer</a>
+<header class="mast"><a class="brand" href="https://bongcult.com/"><b>BongCult</b></a><nav aria-label="Sites"><a href="https://bongcult.com/">Journal</a><a href="https://tools.bongcult.com/" aria-current="location">Audio Tools</a><a href="https://glockwizards.bongcult.com/">GWO</a><a href="https://bongcult.com/guestbook/">Guestbook</a></nav></header>
+<main id="deck">
+<header class="hero"><div><p class="kicker">BONGWARE / INSTRUMENT 01</p><h1>BongDrums</h1><p>Eleven synthesized voices. A sixteen-step room to work in.</p><small>Browser instrument · V6 synthesis</small></div><figure><img src="art/beats-instrument.webp" alt="Engraving of Helmholtz’s double siren"></figure></header>
+<section aria-labelledby="seq-heading">
+<div class="transport"><div><h2 id="seq-heading">Pattern</h2><div class="lamp" id="status" role="status">Audio is off</div></div><button id="play" type="button">▶ Play</button><label>Tempo <input id="tempo" type="number" min="60" max="200" value="130" inputmode="numeric"> BPM</label><label>Load pattern <select id="groove"><option value="" selected>Choose a pattern</option><option value="electro">Factory Electro</option><option value="house">Four on the Floor</option><option value="break">Broken Machine</option><option value="clear">Blank pattern</option></select></label></div>
+<div class="banks" aria-label="Step ranges"><span>Jump to steps</span><button type="button" data-bank="0">1–4</button><button type="button" data-bank="4">5–8</button><button type="button" data-bank="8">9–12</button><button type="button" data-bank="12">13–16</button></div>
+<div class="score-wrap" role="region" aria-label="Drum grid. Swipe to see all sixteen steps." tabindex="0"><div class="score" id="score" role="group" aria-label="Drum tracks and steps"></div></div>
+<p class="score-help">Tap steps to cycle <strong>off → hit → accent</strong>. Use arrow keys to navigate the grid. Tap a voice name to audition it. Press <kbd>Space</kbd> outside the controls to play or stop.</p>
+</section>
+<div class="lower">
+<section class="panel sound" aria-labelledby="sound-heading"><div class="panel-top"><div><p class="kicker">VOICE REGISTER</p><h2 id="sound-heading">Sound</h2></div><img src="art/manual.png" alt=""></div><div id="voice-tabs" aria-label="Choose a voice" class="voice-tabs"></div>
+<div class="picker"><label for="recipe">Preset</label><select id="recipe"></select><button id="audition" type="button">Audition</button></div><div class="params" id="params"></div></section>
+<section class="panel bus" aria-labelledby="bus-heading"><div class="panel-top"><div><p class="kicker">STEREO RETURN</p><h2 id="bus-heading">Drum bus</h2></div><fieldset class="mode"><legend class="sr">Bus processing mode</legend><label><input type="radio" name="busmode" value="dry">Dry</label><label><input type="radio" name="busmode" value="bus">Bus</label></fieldset></div>
+<p>Per-pad reverb and delay returns feed the four V6 processors.</p><div id="macros"></div><div class="meters" aria-label="Gain reduction, in decibels"><span>Comp <output id="comp">0.0 dB</output></span><span>Limit <output id="limit">0.0 dB</output></span></div>
+</section>
+</div>
+<footer><a href="https://ghettomachine.bongcult.com/bongdrums/">Architecture</a><a href="https://github.com/siddholdenried-del/bongdrums/archive/refs/tags/v0.1.0.zip">Source code (GPLv3)</a><details><summary>Artwork credits</summary><p>Helmholtz’s double siren engraving from John Tyndall’s <a href="https://www.gutenberg.org/ebooks/54969"><i>Sound</i></a>; hand from Théodule Ribot’s <a href="https://www.clevelandart.org/art/2009.120.a"><i>Study of Hands</i></a>; border from Athanasius Kircher’s <a href="https://dcp-production-container.library.cornell.edu/catalog/ss%3A550164"><i>Musurgia Universalis</i></a>.</p></details></footer>
+</main><script type="module" src="app.js"></script></body></html>

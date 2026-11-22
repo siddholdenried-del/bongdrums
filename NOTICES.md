@@ -1,0 +1,9 @@
+# Notices
+
+- BongDrums V6 voices, patches and sequencer are from the GhettoMachine Original Kit experiment by Siddhartha Holdenried / BongSoft. This edition includes only the portable engine inputs, not the firmware or Mac UI.
+- The stock DSP subset (`app/dsp/`) is from [GhettoMachine](https://github.com/siddholdenried-del/ghettomachine) and is marked GPL-3.0-only in its source. Preserve its attribution: the FX bus is based on X0X v1.2.2 by Charles Vestal, with ROOM by luchak and delay/glue/distortion lineage from 9W9. The inline building blocks in `drum909_dsp.h` are a GhettoMachine/X0X port from 9W9. See the headers for original credits. This collection does not contain 9W9/ER-99 audio recordings.
+- The mathematical table header is derived from GhettoMachine's GPL `app/tools/gen_drum_samples.py`; its table-only generator is included. The tables are tanh and exponential pot curves, including original 9W9 range values, not sample data.
+- The standalone WebAssembly build uses Emscripten system libraries. C/math/WASI and compiler-runtime notices from the SDK are bundled in `web/licenses/`.
+- Barlow (web/art/display.woff2): Copyright 2017 The Barlow Project Authors, SIL Open Font License 1.1. The license is in web/art/OFL-barlow.txt.
+- Historical image sources: the double siren in John Tyndall’s [Sound](https://www.gutenberg.org/ebooks/54969), Théodule Ribot’s [Study of Hands](https://www.clevelandart.org/art/2009.120.a), and Athanasius Kircher’s [Musurgia Universalis](https://dcp-production-container.library.cornell.edu/catalog/ss%3A550164). These are historical public-domain works; links credit the editions/digitizers rather than applying the GPL to those works.
+- The BongCult and BongSoft names identify their respective projects; the code license does not grant a trademark license.
