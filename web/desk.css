@@ -29,3 +29,4 @@ button,select,input{font:inherit;color:var(--paper);accent-color:var(--acid)}but
 .text-files summary{cursor:pointer;color:var(--acid)}.file-actions{margin-top:.55rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
 .file-pick{border:1px dashed var(--rule);padding:.36rem;display:flex;gap:.35rem;flex-wrap:wrap;max-width:100%}.file-pick input{max-width:100%;font-size:.75rem}
 .file-notice:empty{display:none}.file-notice{color:var(--pink);margin:.4rem 0 0}
+.mix{margin:0 0 .75rem;padding:.5rem .6rem;border:1px solid var(--rule);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem}.mix-title{grid-column:1/-1}@media (max-width:560px){.mix{grid-template-columns:minmax(0,1fr)}}.mix-title{margin:0 0 .2rem;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--acid)}

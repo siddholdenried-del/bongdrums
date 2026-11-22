@@ -6,15 +6,22 @@ import {exportPattern,exportPreset,parseFile,MAX_FILE} from "./web/files.js";
 const module=new WebAssembly.Module(readFileSync("web/bongdrums.wasm"));
 const x=boot(module);
 const old=boot(new WebAssembly.Module(execFileSync("git",["show","v0.1.0:web/bongdrums.wasm"])));
+let busWorst=0;
 const channel=(e,c=0,n=128)=>new Float32Array(e.memory.buffer,c?e.bd_right():e.bd_left(),n);
 for(let mode=0;mode<2;mode++){
  for(const e of [x,old]){e.bd_init();e.bd_dry(mode);e.bd_start();}
  x.bd_swing(50);x.bd_lfo(0,1,2,1,2,0);x.bd_lfo(1,2,0,0,1120,0);
  for(let i=0;i<720;i++){
   x.bd_render(128);old.bd_render(128);
-  for(let c=0;c<2;c++)assert.deepEqual(channel(x,c),channel(old,c));
+  /* Dry stays byte-equal to v0.1.0. Bus differs only by the per-drum send
+     voicing into the shared ROOM/DIGI (v0.3.0), so it must differ, but slightly. */
+  for(let c=0;c<2;c++){
+   if(mode)assert.deepEqual(channel(x,c),channel(old,c));
+   else{const a=channel(x,c),b=channel(old,c);for(let n=0;n<128;n++){const d=Math.abs(a[n]-b[n]);busWorst=Math.max(busWorst,d);}}
+  }
  }
 }
+assert.ok(busWorst>0&&busWorst<.05);
 const ref=boot(module);x.bd_init();
 x.bd_mute(1,1);x.bd_render(128);
 x.bd_hit(1,1);ref.bd_hit(1,1);
@@ -57,4 +64,4 @@ for(const text of ["nope","x".repeat(MAX_FILE+1),exportPattern({...s,bpm:900}),e
 assert.throws(()=>parseFile(exportPreset(2,preset),"Drum Preset",1,ref));
 assert.throws(()=>parseFile(exportPreset(1,{recipe:999,edits:[]}),"Drum Preset",1,ref));
 assert.throws(()=>parseFile(exportPreset(1,{recipe:0,edits:[[0,10000000]]}),"Drum Preset",1,ref));
-console.log("v0.1.0 byte-equal PCM in both modes; muted hits resume mid-tail; 2 LFOs modulate and stay phase-locked; both .txt types round trip and reject malformed input");
+console.log("Dry byte-equal to v0.1.0, Bus within",busWorst.toFixed(4),"(send voicing); muted hits resume mid-tail; 2 LFOs modulate and stay phase-locked; both .txt types round trip and reject malformed input");

@@ -4,7 +4,7 @@ BongDrums is an 11-voice, 16-step drum instrument by BongSoft, provided by BongT
 
 ## Play
 
-Run `python3 -m http.server 48569 --bind 127.0.0.1 --directory web` from this folder and open http://127.0.0.1:48569 in a browser. On macOS, **Open BongDrums.command** does both. Click **Play** for the sequencer, or **Audition** for a selected voice. The workbench includes three starting patterns, a blank pattern, hit/accent entry, 57 factory sounds, per-voice editing, and Dry/Bus comparison. State saves in the browser only. The meters show gain reduction; the listening output has a fixed −6 dB safety trim.
+Run `python3 -m http.server 48569 --bind 127.0.0.1 --directory web` from this folder and open http://127.0.0.1:48569 in a browser. On macOS, **Open BongDrums.command** does both. Click **Play** for the sequencer, or **Audition** for a selected voice. The workbench includes three starting patterns, a blank pattern, hit/accent entry, 57 factory sounds, per-voice editing, and Dry/Bus comparison. Each drum has its own level, plus reverb and delay sends into one shared ROOM reverb and one DIGI delay; each send is filtered for its drum type before it joins them (sends sound in Bus mode only). Each LFO picks a drum, then either that drum's level (continuous) or one of its sliders (sampled at every hit). State saves in the browser only. The meters show gain reduction; the listening output has a fixed −6 dB safety trim.
 
 The AudioWorklet runs the original V6 procedural drums at a fixed 44.1 kHz; it will not substitute browser oscillators or samples if a device cannot provide the rate. Serve via HTTPS away from localhost. Do not use file://.
 

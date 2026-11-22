@@ -39,6 +39,14 @@ void drum_bus_init(DrumBus *b)
 {
     memset(b, 0, sizeof *b);
     fxbus_init(&b->returns, b->delay_line, BUS_DELAY_SAMPLES);
+    /* Send voicing, Hz. Kick and toms keep their low end out of the room;
+       hats and cymbal lose fizz before the delay repeats it. */
+    static const float hp_hz[BUS_PADS] = {350,200,300,120,160,200,700,500,400,250,250};
+    static const float lp_hz[BUS_PADS] = {4000,9000,9000,6000,6500,7000,9000,10000,11000,9000,9000};
+    for (unsigned p = 0; p < BUS_PADS; ++p) {
+        b->send_hp_a[p] = expf(-6.2831853f * hp_hz[p] / (float)KIT_RATE);
+        b->send_lp_b[p] = 1.0f - expf(-6.2831853f * lp_hz[p] / (float)KIT_RATE);
+    }
     /* Identical isolation to the FM-1's fx_init: this stage owns only the
        returns. No distortion/compression/trim from the firmware master. */
     fxbus_set(&b->returns, FX_VOLUME, 127);
@@ -174,11 +182,18 @@ static float render_block(DrumBus *b, const BusMix *m, float *lanes[BUS_PADS],
         float dl = level * master_dl * kit_unit(v->delay);
         if (rv != 0 || dl != 0) {
             send_lane = 1;
+            const float ha = b->send_hp_a[p], lb = b->send_lp_b[p];
+            float x1 = b->send_x[p], hp = b->send_hp[p], lp = b->send_lp[p];
             for (unsigned i = 0; i < n; ++i) {
-                l[i] += lg*src[i]; r[i] += rg*src[i];
-                rev[i] += rv*src[i]; dly[i] += dl*src[i];
+                const float x = src[i];
+                l[i] += lg*x; r[i] += rg*x;
+                hp = ha * (hp + x - x1); x1 = x;
+                lp += lb * (hp - lp);
+                rev[i] += rv*lp; dly[i] += dl*lp;
             }
+            b->send_x[p] = x1; b->send_hp[p] = hp; b->send_lp[p] = lp;
         } else {
+            b->send_x[p] = b->send_hp[p] = b->send_lp[p] = 0;
             for (unsigned i = 0; i < n; ++i) {
                 l[i] += lg*src[i]; r[i] += rg*src[i];
             }

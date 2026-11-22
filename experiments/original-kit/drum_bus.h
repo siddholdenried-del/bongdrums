@@ -24,6 +24,10 @@ typedef struct {
     fxbus_t returns;
     int16_t delay_line[BUS_DELAY_SAMPLES];
     float send[2][BUS_FRAMES];
+    /* One shared ROOM and DIGI. Each pad's send is voiced for its drum before
+       it joins them: one-pole high-pass then low-pass, coefficients per pad. */
+    float send_hp_a[BUS_PADS], send_lp_b[BUS_PADS];
+    float send_x[BUS_PADS], send_hp[BUS_PADS], send_lp[BUS_PADS];
     int returns_live;
     float comp_env, fast_env, slow_env, limiter_reduction;
     /* Positive maximum reduction in the most recently processed span, dB.

@@ -12,8 +12,8 @@ const scores={
   clear: Array(11).fill("................")
 };
 const scoreValues=name=>scores[name].map(row=>[...row].map(n=>n==="X"?2:n==="x"?1:0));
-const lfoDefault=(lane)=>({lane,wave:0,sync:true,div:3,hz:100,depth:0});
-const seed=()=>({banks:[scoreValues("electro"),scoreValues("clear")],playBank:0,editBank:0,lfos:[lfoDefault(7),lfoDefault(9)],mutes:Array(11).fill(false),swing:50,bpm:130,dry:true,macros:[22,64,86,64],voices:names.map(()=>({recipe:0,edits:[]}))});
+const lfoDefault=(lane)=>({lane,param:0,wave:0,sync:true,div:3,hz:100,depth:0});
+const seed=()=>({banks:[scoreValues("electro"),scoreValues("clear")],playBank:0,editBank:0,lfos:[lfoDefault(7),lfoDefault(9)],mutes:Array(11).fill(false),levels:Array(11).fill(100),sends:names.map((_,i)=>[patchStore.bd_send_get(i+1,0),patchStore.bd_send_get(i+1,1)]),swing:50,bpm:130,dry:true,macros:[22,64,86,64],voices:names.map(()=>({recipe:0,edits:[]}))});
 const bounded=(v,lo,hi)=>Number.isInteger(v)&&v>=lo&&v<=hi;
 const key="bongdrums-preview-v2", oldKey="bongdrums-preview-v1";
 let patchStore,timer=0;
@@ -31,8 +31,10 @@ const setup=()=>{
     if(Array.isArray(k.mutes)&&k.mutes.length===11&&k.mutes.every(v=>typeof v==="boolean"))clean.mutes=k.mutes;
     if(Array.isArray(k.lfos))for(let i=0;i<2;i++){
       const l=k.lfos[i];
-      if(l&&bounded(l.lane,0,11)&&bounded(l.wave,0,2)&&typeof l.sync==="boolean"&&bounded(l.div,0,6)&&bounded(l.hz,5,1200)&&bounded(l.depth,0,100))clean.lfos[i]=l;
+      if(l&&bounded(l.lane,0,11)&&bounded(l.wave,0,2)&&typeof l.sync==="boolean"&&bounded(l.div,0,6)&&bounded(l.hz,5,1200)&&bounded(l.depth,0,100))clean.lfos[i]={...l,param:l.lane&&bounded(l.param,0,patchStore.bd_params(l.lane))?l.param:0};
     }
+    if(Array.isArray(k.levels)&&k.levels.length===11&&k.levels.every(v=>bounded(v,0,100)))clean.levels=k.levels;
+    if(Array.isArray(k.sends)&&k.sends.length===11&&k.sends.every(v=>Array.isArray(v)&&v.length===2&&v.every(n=>bounded(n,0,100))))clean.sends=k.sends;
     if(typeof k.dry==="boolean")clean.dry=k.dry;
     if(bounded(k.bpm,60,200))clean.bpm=k.bpm;
     if(k.macros?.length===4&&k.macros.every(n=>bounded(n,0,127)))clean.macros=k.macros;
@@ -124,7 +126,19 @@ function selectVoice(p){
   tabs.forEach((e,i)=>e.setAttribute("aria-pressed",String(i===p-1)));
   const r=$("recipe");r.replaceChildren(make("option","Custom",{value:-1,disabled:""}));
   for(let n=0;n<patchStore.bd_recipe_count(p);n++)r.append(make("option",fromPtr(patchStore.bd_recipe_name(p,n)),{value:n}));
-  recipeSelection(p);buildParams();
+  recipeSelection(p);buildLevel();buildParams();
+}
+const levelText=v=>v===0?"Off":(v===100?"0.0":(40*Math.log10(v/100)).toFixed(1))+" dB";
+function buildLevel(){
+  const p=selected,area=$("level");area.replaceChildren(make("p","Mix",{class:"mix-title"}));
+  const row=(id,title,value,text,onset)=>{
+    const div=make("div",null,{class:"param"}),label=make("label",title,{for:id}),out=make("output",text(value),{for:id});
+    const ctl=make("input",null,{id,type:"range",min:0,max:100,step:1});ctl.value=value;
+    label.append(out);div.append(label,ctl);area.append(div);
+    ctl.addEventListener("input",()=>{const v=+ctl.value;out.value=text(v);onset(v);persist();});
+  };
+  row("pad-level","Level",state.levels[p-1],levelText,v=>{state.levels[p-1]=v;patchStore.bd_level(p,v);send("level",{pad:p,value:v});});
+  ["Reverb send","Delay send"].forEach((title,which)=>row("pad-send-"+which,title,state.sends[p-1][which],v=>v+"%",v=>{state.sends[p-1][which]=v;patchStore.bd_send(p,which,v);send("send",{pad:p,which,value:v});}));
 }
 function tickDisplay(p,k,v){
   const d=patchStore.bd_decimals(p,k),unit=fromPtr(patchStore.bd_unit(p,k));
@@ -169,7 +183,21 @@ function buildLFOs(){
       choices.forEach((n,j)=>ctl.append(make("option",n,{value:j})));
       const box=label(ctl,title,key);ctl.onchange=()=>update(key,+ctl.value);return [box,ctl];
     }
-    select("lane","Destination",["Off",...names.map(n=>n+" level")]);
+    const [,drum]=select("lane","Drum",["Off",...names]);
+    const target=make("select",null);label(target,"Target","param");
+    const fillTargets=()=>{
+      target.replaceChildren(make("option","Level",{value:0}));
+      const p=spec.lane;
+      if(p)for(let k=0;k<patchStore.bd_params(p);k++){
+        const min=patchStore.bd_min(p,k);if(patchStore.bd_option(p,k,min))continue;
+        target.append(make("option",fromPtr(patchStore.bd_label(p,k)),{value:k+1}));
+      }
+      target.value=String(spec.param);if(target.value!==String(spec.param)){spec.param=0;target.value="0";}
+      target.disabled=!p;
+    };
+    drum.onchange=()=>{spec.lane=+drum.value;spec.param=0;fillTargets();send("lfo",{slot:i,value:spec});persist();};
+    target.onchange=()=>update("param",+target.value);
+    fillTargets();
     select("wave","Waveform",["Sine","Triangle","Soft square"]);
     const sync=make("select",null);["Free rate","Tempo sync"].forEach((n,j)=>sync.append(make("option",n,{value:j})));
     label(sync,"Clock","sync");sync.value=spec.sync?1:0;

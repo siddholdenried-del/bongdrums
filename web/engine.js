@@ -4,9 +4,9 @@ export function boot(module){
 }
 export function lfo(x,i,l){
   x.bd_lfo(i,l.lane,l.wave,l.sync?1:0,l.sync?l.div:l.hz,l.depth);
+  x.bd_lfo_param(i,l.lane?(l.param||0):0);
 }
 export function apply(x,s){
-  s.lfos.forEach((l,i)=>lfo(x,i,l));
   x.bd_bank(s.playBank);x.bd_swing(s.swing);
   x.bd_tempo(s.bpm);x.bd_dry(s.dry?1:0);
   for(let k=0;k<4;k++)x.bd_macro(k,s.macros[k]);
@@ -14,6 +14,9 @@ export function apply(x,s){
     x.bd_recipe(p,s.voices[p-1].recipe);
     for(const [k,v] of s.voices[p-1].edits)x.bd_set(p,k,v);
     x.bd_mute(p,s.mutes[p-1]?1:0);
+    x.bd_level(p,s.levels?.[p-1]??100);
+    if(s.sends)for(let w=0;w<2;w++)x.bd_send(p,w,s.sends[p-1][w]);
     for(let b=0;b<2;b++)for(let n=0;n<16;n++)x.bd_bank_cell(b,p,n,s.banks[b][p-1][n]);
   }
+  s.lfos.forEach((l,i)=>lfo(x,i,l));
 }
