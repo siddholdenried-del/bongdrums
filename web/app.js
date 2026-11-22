@@ -331,14 +331,23 @@ function buildMixer(){
   });
 }
 
+/* ---------- pixel displays: one canvas pixel per VHS block ---------- */
+const unit=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--u"))||3;
+function pixelCanvas(c){
+  const u=unit(),w=Math.max(8,Math.floor(c.clientWidth/u)),h=Math.max(8,Math.floor(c.clientHeight/u));
+  if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+  return [c.getContext("2d"),w,h];
+}
+// A connected one-pixel line: each column fills from the previous row to its own.
+function plot(g,ys,color,thick=2){
+  g.fillStyle=color;let prev=null;
+  for(let x=0;x<ys.length;x++){const y=Math.round(ys[x]),a=prev===null?y:Math.min(prev,y),b=prev===null?y:Math.max(prev,y);g.fillRect(x,a,1,b-a+thick);prev=y;}
+}
+const COL={well:"#1A0A14",edge:"#5E3D51",cream:"#FFE8B6",blue:"#55A0C9",amber:"#FFC05C",read:"#7A5A68"};
+
 /* ---------- LFO view ---------- */
 const lfoDraw=[];
 const lfoY=(wave,ph)=>{if(wave===1)return 1-4*Math.abs(ph-.5);const y=Math.sin(2*Math.PI*ph);return wave===2?2*Math.min(1,Math.max(0,.5+2*y))-1:y;};
-// The read point is fixed at the centre; the wave scrolls through it (two cycles across the display).
-function wavePath(wave,depth,phase=0){
-  const pts=[];for(let i=0;i<=160;i++){const ph=((phase+(i/160-.5)*2)%1+1)%1;pts.push([i/160*320,60-lfoY(wave,ph)*48*(.15+.85*depth/100)]);}
-  return "M"+pts.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join("L");
-}
 function buildLFOs(){
   for(let i=0;i<2;i++){
     const spec=state.lfos[i],slot=make("div",null,{class:"lfo-slot","data-slot":i});
@@ -366,8 +375,8 @@ function buildLFOs(){
     route.append(field("DRUM",drum),tf,field("SHAPE",shape),field("CLOCK",clock));
     pickerFor(drum,{title:"LFO "+(i+1)+" DRUM",cols:4,label:o=>o.text,sub:o=>+o.value?names[o.value-1].toUpperCase():"NO TARGET"});
     const scope=make("div",null,{class:"scope"});
-    scope.innerHTML=`<svg viewBox="0 0 320 120" preserveAspectRatio="none" aria-hidden="true"><line class="axis" x1="0" y1="60" x2="320" y2="60"/><path class="wave"/><line class="read" x1="160" y1="4" x2="160" y2="116"/><circle class="dot" cx="160" r="5"/></svg><span class="scope-label"></span>`;
-    const wave=scope.querySelector(".wave"),dot=scope.querySelector(".dot"),slabel=scope.querySelector(".scope-label");
+    scope.innerHTML=`<canvas aria-hidden="true"></canvas><span class="scope-label"></span>`;
+    const canvas=scope.querySelector("canvas"),slabel=scope.querySelector(".scope-label");
     const divs=["2 BARS","1 BAR","1/2","1/4","1/8","1/16","1/32"];
     const cycle=knob({id:"lfo-"+i+"-div",label:"RATE",min:0,max:6,value:spec.div,def:3,fmt:v=>divs[v],onInput:v=>update("div",v)});
     const hz=knob({id:"lfo-"+i+"-hz",label:"RATE",min:5,max:1200,value:spec.hz,def:100,fmt:v=>(v/100).toFixed(2)+" HZ",onInput:v=>update("hz",v)});
@@ -383,10 +392,19 @@ function buildLFOs(){
     redraw();
     // Cycles per second, as the engine counts them: sync = cycles per 8 beats, free = hz/100.
     const cps=()=>spec.sync?state.bpm/60*[1,2,4,8,16,32,64][spec.div]/8:spec.hz/100;
+    // The read column is fixed at the centre; two cycles scroll through it.
     lfoDraw[i]=()=>{
+      if(!canvas.clientWidth)return;
       const ph=(lfoPhase[i]>>>0)/4294967296+(ctx&&lfoAt?cps()*(performance.now()-lfoAt)/1000:0);
-      wave.setAttribute("d",wavePath(spec.wave,spec.depth,ph));
-      dot.setAttribute("cy",(60-lfoY(spec.wave,((ph%1)+1)%1)*48*(.15+.85*spec.depth/100)).toFixed(1));
+      const [g,w,h]=pixelCanvas(canvas),mid=Math.floor(w/2),amp=(h/2-4)*(.15+.85*spec.depth/100),y0=Math.floor(h/2);
+      g.fillStyle=COL.well;g.fillRect(0,0,w,h);
+      g.fillStyle=COL.edge;g.fillRect(0,y0,w,1);
+      g.fillStyle=COL.read;g.fillRect(mid,0,1,h);
+      const ys=[];for(let x=0;x<w;x++)ys.push(y0-lfoY(spec.wave,(((ph+(x/w-.5)*2)%1)+1)%1)*amp);
+      plot(g,ys,spec.lane&&spec.depth?COL.blue:COL.edge);
+      const yd=Math.round(y0-lfoY(spec.wave,((ph%1)+1)%1)*amp);
+      g.fillStyle=COL.amber;g.fillRect(mid-2,yd-2,5,5);
+      canvas.dataset.read=String(mid);canvas.dataset.value=String(yd);canvas.dataset.phase=(((ph%1)+1)%1).toFixed(4);
     };
     lfoDraw[i]();
     slot.append(route,centre);$("lfo-controls").append(slot);fitter.observe(centre);
@@ -465,16 +483,16 @@ function drawScope(){
   requestAnimationFrame(drawScope);
   if(document.body.dataset.view==="lfo"&&!document.hidden)lfoDraw[lfoShown]?.();
   if(document.body.dataset.view!=="bus"||document.hidden)return;
-  const c=$("bus-scope"),g=c.getContext("2d"),dpr=devicePixelRatio||1,w=Math.round(c.clientWidth*dpr),h=Math.round(c.clientHeight*dpr);
-  if(!w||!h)return;if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
-  const plain=document.body.classList.contains("fx-off");
-  g.shadowBlur=0;g.fillStyle=plain?"#1A0A14":"rgba(26,10,20,.32)";g.fillRect(0,0,w,h);
-  g.strokeStyle="#5A3A4D";g.lineWidth=dpr;g.setLineDash([4*dpr,4*dpr]);g.beginPath();g.moveTo(0,h/2);g.lineTo(w,h/2);g.stroke();g.setLineDash([]);
+  const c=$("bus-scope");if(!c.clientWidth)return;
+  const [g,w,h]=pixelCanvas(c),y0=Math.floor(h/2),plain=document.body.classList.contains("fx-off");
+  // Phosphor: fade the last frame a little instead of clearing it (cleared outright with FX off).
+  g.fillStyle=plain?COL.well:"rgba(26,10,20,.38)";g.fillRect(0,0,w,h);
+  g.fillStyle=COL.edge;g.fillRect(0,y0,w,1);
   if(!analyser)return;
   if(!scopeBuf)scopeBuf=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(scopeBuf);
   const N=1024;let start=0;for(let i=1;i<scopeBuf.length-N;i++)if(scopeBuf[i-1]<=0&&scopeBuf[i]>0){start=i;break;}
-  g.strokeStyle="#55A0C9";g.lineWidth=2*dpr;if(!plain){g.shadowColor="#55A0C9";g.shadowBlur=8*dpr;}
-  g.beginPath();for(let i=0;i<N;i++){const y=h/2-Math.max(-1,Math.min(1,scopeBuf[start+i]*1.4))*h*.44;i?g.lineTo(i/(N-1)*w,y):g.moveTo(0,y);}g.stroke();
+  const ys=[];for(let x=0;x<w;x++)ys.push(y0-Math.max(-1,Math.min(1,scopeBuf[start+Math.floor(x*N/w)]*1.4))*(h/2-2));
+  plot(g,ys,COL.blue);
 }
 async function enableAudio(){
   if(ctx?.state==="running"&&port)return true;

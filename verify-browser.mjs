@@ -128,9 +128,9 @@ await js(`document.querySelector('.modes [data-tab=bus]').click()`);await wait(5
 assert.ok(await js('(()=>{const c=document.getElementById("bus-scope"),d=c.getContext("2d").getImageData(0,0,c.width,c.height).data;let lit=0;for(let i=0;i<d.length;i+=4)if(d[i+2]>150&&d[i]<120)lit++;return lit})()')>50,"scope draws the output");
 // LFO view: the read point stays centred while the waveform scrolls through it.
 await js(`document.querySelector('.modes [data-tab=lfo]').click();(()=>{const l=document.getElementById("lfo-0-lane");l.value="1";l.dispatchEvent(new Event("change"));const d=document.getElementById("lfo-0-depth");d.value=80;d.dispatchEvent(new Event("input"));})()`);
-await wait(200);const lfoA=await js('(()=>{const s=document.querySelector(".lfo-slot[data-slot=\'0\']");return [s.querySelector(".dot").getAttribute("cx"),s.querySelector(".wave").getAttribute("d")]})()');
-await wait(350);const lfoB=await js('(()=>{const s=document.querySelector(".lfo-slot[data-slot=\'0\']");return [s.querySelector(".dot").getAttribute("cx"),s.querySelector(".wave").getAttribute("d")]})()');
-assert.equal(lfoA[0],"160");assert.equal(lfoB[0],"160");assert.notEqual(lfoA[1],lfoB[1],"waveform scrolls");
+const lfoRead=`(()=>{const c=document.querySelector('.lfo-slot[data-slot="0"] canvas');return [c.dataset.read,String(Math.floor(c.width/2)),c.dataset.phase]})()`;
+await wait(200);const lfoA=await js(lfoRead);await wait(350);const lfoB=await js(lfoRead);
+assert.equal(lfoA[0],lfoA[1]);assert.equal(lfoB[0],lfoB[1]);assert.notEqual(lfoA[2],lfoB[2],"waveform scrolls through the fixed centre read column");
 // VHS pixelation is on by default and FX OFF removes it.
 assert.match(await js('getComputedStyle(document.querySelector(".app")).filter'),/pixelate/);
 await js('(()=>{const f=document.getElementById("fx-off");f.checked=true;f.dispatchEvent(new Event("change"))})()');
