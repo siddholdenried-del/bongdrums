@@ -15,6 +15,7 @@ enum { STATION_LFOS = 2 };
 typedef struct {
     uint32_t phase, remainder;
     unsigned lane, wave, sync, rate, depth;
+    unsigned param; /* 0 = pad level; k+1 = numeric parameter k, applied per hit */
     float offset[KIT_PADS];
 } StationLFO;
 typedef struct {
@@ -41,7 +42,13 @@ void station_set_mix(Station *s, const BusMix *mix);
 void station_start(Station *s);
 void station_stop(Station *s);
 void station_lfo(Station *s, int slot, int lane, int wave, int sync, int rate, int depth);
+void station_lfo_param(Station *s, int slot, int param);
+void station_level(Station *s, int pad, float level);
+/* which: 0 = ROOM reverb send, 1 = DIGI delay send; amount 0..1. */
+void station_send(Station *s, int pad, int which, float amount);
 void station_mute(Station *s, int pad, int muted);
+/* Hit with the pad's stored patch plus any per-hit LFO parameter offsets. */
+void station_trigger(Station *s, int pad, float velocity);
 void station_hit(Station *s, int pad, float velocity, const KitPatch *patch);
 void station_render(Station *s, float *left, float *right, unsigned n);
 #endif
