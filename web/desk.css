@@ -160,6 +160,7 @@ body[data-view=mixer] .view[data-view=mixer],body[data-view=bus] .view[data-view
 .scope .axis{stroke:var(--edge);stroke-width:1;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}
 .scope .wave{fill:none;stroke:var(--blue);stroke-width:3;vector-effect:non-scaling-stroke}
 .scope .dot{fill:var(--amber)}
+.scope .read{stroke:var(--cream);stroke-width:1;stroke-dasharray:3 3;opacity:.55;vector-effect:non-scaling-stroke}
 .scope-label{position:absolute;left:.7rem;top:.5rem;font-size:.75rem;color:var(--amber)}
 .lfo-slot.idle .scope .wave{stroke:var(--edge)}
 
@@ -207,6 +208,20 @@ body.is-dry .view[data-view=bus] .knobs{opacity:.45}
 @keyframes track{0%,82%{transform:translateY(0);opacity:0}84%{opacity:1}100%{transform:translateY(1300%);opacity:.8}}
 .screen.fringe::after{content:"";position:absolute;inset:6px -6px -4px;border-radius:var(--sharp);pointer-events:none;box-shadow:-3px 0 0 #dc453c66,3px 0 0 #55a0c966;animation:fringe .28s ease-out forwards}
 @keyframes fringe{from{opacity:1}to{opacity:0;box-shadow:0 0 0 #0000,0 0 0 #0000}}
+/* VHS: the interface is sampled into 4 px blocks and covered in heavy scanlines. */
+.fx-defs{position:absolute;width:0;height:0;overflow:hidden}
+body:not(.fx-off) .app{filter:url(#pixelate)}
+@media (max-width:640px){body:not(.fx-off) .app{filter:url(#pixelate-fine)}}
+.crt{position:fixed;inset:0;z-index:40;pointer-events:none;
+  background:repeating-linear-gradient(180deg,#0000 0 2px,#0a0206a8 2px 4px),
+             linear-gradient(90deg,#dc453c0d,#0000 30% 70%,#55a0c90d)}
+body.fx-off .crt{display:none}
+/* Small text is raised to a size that survives the 3 px pixelation. */
+body:not(.fx-off) :is(.tag,.lamp,.read,.gr,.meters,.hint,.flow,.scope-label,.ret-tag,.tile small,.strip.legend span){font-size:12px}
+body:not(.fx-off) .score .hrow,body:not(.fx-off) .score .mute{font-size:13px}
+body:not(.fx-off) .score .lane{font-size:max(13px,clamp(.8rem,1.15vw,1.1rem))}
+body:not(.fx-off) .knob .kl,body:not(.fx-off) .knob .kv{font-size:max(12px,clamp(.68rem,calc(var(--dial,96px)*.12),1.3rem))}
+body:not(.fx-off) .knob.mini .kl{font-size:11px}
 body.fx-off .vhs{display:none}
 body.fx-off .screen.fringe::after{display:none}
 @media (prefers-reduced-motion:reduce){
