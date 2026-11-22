@@ -59,7 +59,7 @@ const ui=(()=>{try{return JSON.parse(localStorage.getItem(uiKey))||{};}catch{ret
 const saveUI=()=>{try{localStorage.setItem(uiKey,JSON.stringify(ui));}catch{}};
 
 let state,ctx,port,module,connecting,playing=false,recording=false,selected=1,active=-1,focus=[0,0],stepAt=0,lfoShown=0;
-let playingBank=0,queuedBank=-1,lfoPhase=[0,0];
+let playingBank=0,queuedBank=-1,lfoPhase=[0,0],lfoAt=0;
 const lanes=[],number=[],buttons=[],muteButtons=[],strips=[];
 const rows=()=>state.banks[state.editBank];
 const send=(kind,value)=>port?.postMessage({kind,...value});
@@ -334,8 +334,9 @@ function buildMixer(){
 /* ---------- LFO view ---------- */
 const lfoDraw=[];
 const lfoY=(wave,ph)=>{if(wave===1)return 1-4*Math.abs(ph-.5);const y=Math.sin(2*Math.PI*ph);return wave===2?2*Math.min(1,Math.max(0,.5+2*y))-1:y;};
-function wavePath(wave,depth){
-  const pts=[];for(let i=0;i<=160;i++)pts.push([4+i/160*312,60-lfoY(wave,(i/160*2)%1)*48*(.15+.85*depth/100)]);
+// The read point is fixed at the centre; the wave scrolls through it (two cycles across the display).
+function wavePath(wave,depth,phase=0){
+  const pts=[];for(let i=0;i<=160;i++){const ph=((phase+(i/160-.5)*2)%1+1)%1;pts.push([i/160*320,60-lfoY(wave,ph)*48*(.15+.85*depth/100)]);}
   return "M"+pts.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join("L");
 }
 function buildLFOs(){
@@ -365,7 +366,7 @@ function buildLFOs(){
     route.append(field("DRUM",drum),tf,field("SHAPE",shape),field("CLOCK",clock));
     pickerFor(drum,{title:"LFO "+(i+1)+" DRUM",cols:4,label:o=>o.text,sub:o=>+o.value?names[o.value-1].toUpperCase():"NO TARGET"});
     const scope=make("div",null,{class:"scope"});
-    scope.innerHTML=`<svg viewBox="0 0 320 120" preserveAspectRatio="none" aria-hidden="true"><line class="axis" x1="0" y1="60" x2="320" y2="60"/><path class="wave"/><circle class="dot" r="5"/></svg><span class="scope-label"></span>`;
+    scope.innerHTML=`<svg viewBox="0 0 320 120" preserveAspectRatio="none" aria-hidden="true"><line class="axis" x1="0" y1="60" x2="320" y2="60"/><path class="wave"/><line class="read" x1="160" y1="4" x2="160" y2="116"/><circle class="dot" cx="160" r="5"/></svg><span class="scope-label"></span>`;
     const wave=scope.querySelector(".wave"),dot=scope.querySelector(".dot"),slabel=scope.querySelector(".scope-label");
     const divs=["2 BARS","1 BAR","1/2","1/4","1/8","1/16","1/32"];
     const cycle=knob({id:"lfo-"+i+"-div",label:"RATE",min:0,max:6,value:spec.div,def:3,fmt:v=>divs[v],onInput:v=>update("div",v)});
@@ -375,12 +376,18 @@ function buildLFOs(){
     rate.append(cycle,hz);centre.append(rate,scope,depth);
     reveal=()=>{cycle.hidden=!spec.sync;hz.hidden=spec.sync;};reveal();
     redraw=()=>{
-      wave.setAttribute("d",wavePath(spec.wave,spec.depth));
+      lfoDraw[i]?.();
       slabel.textContent=spec.lane?short[spec.lane-1]+" · "+(spec.param?target.selectedOptions[0]?.text||"":"LEVEL"):"OFF";
       slot.classList.toggle("idle",!spec.lane||!spec.depth);
     };
     redraw();
-    lfoDraw[i]=()=>{const ph=(lfoPhase[i]>>>0)/4294967296;dot.setAttribute("cx",(4+ph*156).toFixed(1));dot.setAttribute("cy",(60-lfoY(spec.wave,ph)*48*(.15+.85*spec.depth/100)).toFixed(1));};
+    // Cycles per second, as the engine counts them: sync = cycles per 8 beats, free = hz/100.
+    const cps=()=>spec.sync?state.bpm/60*[1,2,4,8,16,32,64][spec.div]/8:spec.hz/100;
+    lfoDraw[i]=()=>{
+      const ph=(lfoPhase[i]>>>0)/4294967296+(ctx&&lfoAt?cps()*(performance.now()-lfoAt)/1000:0);
+      wave.setAttribute("d",wavePath(spec.wave,spec.depth,ph));
+      dot.setAttribute("cy",(60-lfoY(spec.wave,((ph%1)+1)%1)*48*(.15+.85*spec.depth/100)).toFixed(1));
+    };
     lfoDraw[i]();
     slot.append(route,centre);$("lfo-controls").append(slot);fitter.observe(centre);
   }
@@ -456,6 +463,7 @@ let outBar,analyser,scopeBuf;const grBars=[];
 /* BUS scope: the output waveform, triggered on a rising zero crossing, with a faint phosphor trail. */
 function drawScope(){
   requestAnimationFrame(drawScope);
+  if(document.body.dataset.view==="lfo"&&!document.hidden)lfoDraw[lfoShown]?.();
   if(document.body.dataset.view!=="bus"||document.hidden)return;
   const c=$("bus-scope"),g=c.getContext("2d"),dpr=devicePixelRatio||1,w=Math.round(c.clientWidth*dpr),h=Math.round(c.clientHeight*dpr);
   if(!w||!h)return;if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
@@ -492,7 +500,7 @@ async function enableAudio(){
           $("comp").value=data.c.toFixed(1)+" dB";$("limit").value=data.l.toFixed(1)+" dB";
           grBars[0].style.transform=`scaleX(${Math.min(1,data.c/12).toFixed(3)})`;grBars[1].style.transform=`scaleX(${Math.min(1,data.l/12).toFixed(3)})`;
           if(data.o!==undefined)outBar.style.transform=`scaleX(${Math.min(1,data.o*.5/.7).toFixed(3)})`;
-          if(data.p){lfoPhase=data.p;if(document.body.dataset.view==="lfo")lfoDraw[lfoShown]?.();}
+          if(data.p){lfoPhase=data.p;lfoAt=performance.now();}
         };
         node.addEventListener("processorerror",()=>{info.textContent="Audio processor stopped. Reload to retry.";playing=false;$("play").disabled=true;});
         send("state",{state});
