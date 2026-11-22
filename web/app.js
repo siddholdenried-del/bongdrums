@@ -259,14 +259,18 @@ function gridBuild(){
 }
 
 /* ---------- drum view ---------- */
-function recipeSelection(p){const v=patchStore.bd_match(p),s=$("recipe");s.querySelector("option[value='-1']").hidden=v!==-1;s.value=String(v);$("recipe-seg").set?.(v);$("custom-tag").classList.toggle("on",v===-1);}
-function tickDisplay(p,k,v){const d=patchStore.bd_decimals(p,k),unit=fromPtr(patchStore.bd_unit(p,k));return (v/(10**d)).toFixed(d)+(unit?" "+unit:"");}
+function recipeSelection(p){const v=patchStore.bd_match(p),s=$("recipe");s.querySelector("option[value='-1']").hidden=v!==-1;s.value=String(v);s.sync?.();}
+function tickDisplay(p,k,v){
+  const d=patchStore.bd_decimals(p,k),unit=fromPtr(patchStore.bd_unit(p,k)),label=fromPtr(patchStore.bd_label(p,k));
+  if(label==="Tone")return v===0?"FLAT":(v<0?"DARK ":"THIN ")+Math.round(Math.abs(v)/10)+"%";
+  if(label==="Drive"&&v===0)return "OFF";
+  return (v/(10**d)).toFixed(d)+(unit?" "+unit:"");
+}
 function selectVoice(p){
   selected=p;$("sound-heading").textContent=String(p).padStart(2,"0")+" "+names[p-1].toUpperCase();
   lanes.forEach((e,i)=>e.classList.toggle("sel",i===p-1));
   const r=$("recipe");r.replaceChildren(make("option","CUSTOM",{value:-1,disabled:""}));
-  const recipes=[];for(let n=0;n<patchStore.bd_recipe_count(p);n++){const name=fromPtr(patchStore.bd_recipe_name(p,n)).toUpperCase();recipes.push(name);r.append(make("option",name,{value:n}));}
-  segment($("recipe-seg"),recipes,patchStore.bd_match(p),n=>{r.value=String(n);r.dispatchEvent(new Event("change"));},{label:"Preset",cls:"presets"});
+  for(let n=0;n<patchStore.bd_recipe_count(p);n++)r.append(make("option",fromPtr(patchStore.bd_recipe_name(p,n)).toUpperCase(),{value:n}));
   recipeSelection(p);buildParams();
 }
 function buildParams(){
@@ -520,6 +524,7 @@ try{
   for(const [id,list,custom] of [["kit",kits,"CUSTOM KIT"],["groove",patterns,"EDITED PATTERN"]]){const sel=$(id);sel.append(make("option",custom,{value:-1,disabled:""}));list.forEach((x,i)=>sel.append(make("option",x.name.toUpperCase(),{value:i})));}
   gridBuild();buildMixer();buildLFOs();
   pickerFor($("kit"),{title:"KIT",cols:3,cls:"wide"});
+  pickerFor($("recipe"),{title:"DRUM PRESET",cols:3,cls:"small"});
   pickerFor($("groove"),{title:"PATTERN · LOADS INTO THE EDIT BANK",cols:4,cls:"wide",sub:o=>{const p=patterns[+o.value];return p&&p.bpm?p.bpm+" BPM · SWING "+p.swing+"%":""}});
   $("drum-pick").onclick=()=>openSheet("DRUM",names.map((n,i)=>({value:i+1,label:String(i+1).padStart(2,"0")+" "+short[i],sub:n.toUpperCase()})),selected,v=>selectVoice(+v),4,$("drum-pick"));
   $("sheet-close").onclick=closeSheet;

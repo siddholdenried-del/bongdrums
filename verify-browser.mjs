@@ -103,7 +103,7 @@ assert.deepEqual(await js('[document.getElementById("sheet").hidden,document.que
 await js('document.getElementById("drum-pick").click()');
 await call("Input.dispatchKeyEvent",{type:"keyDown",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
 assert.equal(await js('document.getElementById("sheet").hidden'),true);
-await js('document.querySelector("#recipe-seg button:nth-child(2)").click()');
+await js('document.querySelector("#recipe + .pick").click()');await js('document.querySelectorAll("#sheet-grid .tile")[1].click()');
 assert.equal(await js('document.querySelector("#recipe").value'),"1");
 console.log("Kit and pattern library, musical hotkeys and custom-kit marking, tile pickers and preset buttons passed");
 // Views are display only: switching through all five keeps playback, the playing bank and tails.

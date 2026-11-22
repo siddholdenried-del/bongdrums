@@ -30,6 +30,11 @@ typedef struct {
     StationLFO lfo[STATION_LFOS];
     unsigned mute_mask;
     unsigned lane_level[KIT_PADS];
+    /* Tone/Drive captured at each strike, with one-pole filter state per lane. */
+    float shape_a[KIT_PADS], shape_gain[KIT_PADS], shape_out[KIT_PADS];
+    float shape_z[KIT_PADS], shape_x1[KIT_PADS];
+    signed char shape_mode[KIT_PADS]; /* -1 low-pass, 0 none, +1 high-pass */
+    unsigned char shape_drive[KIT_PADS];
     float samples[KIT_PADS][KIT_BLOCK];
 } Station;
 

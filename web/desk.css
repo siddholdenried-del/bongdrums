@@ -107,7 +107,7 @@ body[data-view=mixer] .view[data-view=mixer],body[data-view=bus] .view[data-view
 @keyframes laneacc{from{background:var(--amber);color:var(--felt);box-shadow:0 0 16px var(--amber)}}
 
 /* ---------- DRUM ---------- */
-.kit-row{justify-content:flex-start}
+.kit-row{justify-content:space-between;gap:.5rem 1rem}
 .voice-head{display:flex;align-items:center;gap:clamp(.6rem,2vw,1.6rem);margin-top:clamp(0rem,2dvh,2rem)}
 .voice-head h2{margin:0;font:700 clamp(1.8rem,4vw,3.2rem)/1 var(--mono);min-width:9ch;text-align:center;text-shadow:3px 3px 0 var(--felt-lo)}
 #audition{font-size:1.05rem;padding:.4rem 1.1rem}
@@ -324,3 +324,5 @@ body.fx-off .screen.fringe::after{display:none}
   .recipes{gap:.4rem}.seg.presets button{padding:.2rem .45rem;font-size:.68rem}
   .drum-pick i{font-size:1rem}
 }
+
+.pick.small{min-width:clamp(9rem,14vw,13rem);min-height:34px;font-size:.85rem;border-width:2px;border-color:var(--ring)}

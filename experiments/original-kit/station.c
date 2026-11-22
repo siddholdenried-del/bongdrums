@@ -1,6 +1,8 @@
 #include "station.h"
 #include "kit_math.h"
 #include "presets.h"
+#include "fastmath.h"
+#include <math.h>
 #include <string.h>
 
 KitPattern station_preset(void)
@@ -28,6 +30,10 @@ void station_init(Station *s)
     s->mix = bus_default_mix();
     s->mix.dry_only = 1;
     memset(s->lfo, 0, sizeof(s->lfo));
+    memset(s->shape_a, 0, sizeof s->shape_a); memset(s->shape_gain, 0, sizeof s->shape_gain);
+    memset(s->shape_out, 0, sizeof s->shape_out); memset(s->shape_z, 0, sizeof s->shape_z);
+    memset(s->shape_x1, 0, sizeof s->shape_x1); memset(s->shape_mode, 0, sizeof s->shape_mode);
+    memset(s->shape_drive, 0, sizeof s->shape_drive);
     s->mute_mask = 0;
     for (unsigned i = 0; i < KIT_PADS; ++i) s->lane_level[i] = LANE_RAMP;
     const KitPatch patch = kit_default_patch();
@@ -183,6 +189,46 @@ void station_hit(Station *s, int pad, float velocity, const KitPatch *patch)
 {
     kit_hit(&s->kit, pad, velocity, patch);
 }
+/* Tone and Drive are read when the pad strikes, like the voice controls.
+   Coefficients are worked out here so the render loop stays cheap. */
+static void capture_shaping(Station *s, int pad, const KitPatch *patch)
+{
+    const unsigned i = (unsigned)pad - 1;
+    const float tone = patch->tone[i], drive = patch->drive[i];
+    if (tone < 0.f) {          /* low-pass 18 kHz -> 250 Hz */
+        const float hz = 18000.f * powf(250.f/18000.f, tone < -1.f ? 1.f : -tone);
+        s->shape_mode[i] = -1; s->shape_a[i] = 1.f - expf(-6.2831853f*hz/(float)KIT_RATE);
+    } else if (tone > 0.f) {   /* high-pass 20 Hz -> 2.5 kHz */
+        const float hz = 20.f * powf(2500.f/20.f, tone > 1.f ? 1.f : tone);
+        s->shape_mode[i] = 1; s->shape_a[i] = expf(-6.2831853f*hz/(float)KIT_RATE);
+    } else s->shape_mode[i] = 0;
+    if (drive > 0.f) {
+        const float d = drive > 1.f ? 1.f : drive;
+        s->shape_drive[i] = 1; s->shape_gain[i] = 1.f + 9.f*d; s->shape_out[i] = 1.f / powf(s->shape_gain[i], .6f);
+    } else s->shape_drive[i] = 0;
+}
+static void render_shaping(Station *s, float *lanes[KIT_PADS], unsigned span)
+{
+    for (unsigned p = 0; p < KIT_PADS; ++p) {
+        float *x = lanes[p];
+        if (!x) { s->shape_z[p] = s->shape_x1[p] = 0; continue; }
+        const int mode = s->shape_mode[p];
+        if (mode < 0) {
+            float z = s->shape_z[p]; const float a = s->shape_a[p];
+            for (unsigned n = 0; n < span; ++n) { z += a*(x[n]-z); x[n] = z; }
+            s->shape_z[p] = z;
+        } else if (mode > 0) {
+            float y = s->shape_z[p], x1 = s->shape_x1[p]; const float a = s->shape_a[p];
+            for (unsigned n = 0; n < span; ++n) { const float in = x[n]; y = a*(y + in - x1); x1 = in; x[n] = y; }
+            s->shape_z[p] = y; s->shape_x1[p] = x1;
+        }
+        if (s->shape_drive[p]) {
+            const float g = s->shape_gain[p], o = s->shape_out[p];
+            for (unsigned n = 0; n < span; ++n) x[n] = o * fm_tanhf(g * x[n]);
+        }
+    }
+}
+
 /* A parameter LFO is sampled when the pad strikes: the swing is centred on the
    stored value, reaching half the parameter's range either way at 100% depth.
    Sounding voices keep the values they started with. */
@@ -203,6 +249,7 @@ void station_trigger(Station *s, int pad, float velocity)
         const int base = kit_param_get(&shifted, pad, k);
         kit_param_set(&shifted, pad, k, base + (int)(swing < 0 ? swing - .5f : swing + .5f));
     }
+    capture_shaping(s, pad, changed ? &shifted : patch);
     kit_hit(&s->kit, pad, velocity, changed ? &shifted : patch);
 }
 
@@ -219,6 +266,7 @@ void station_render(Station *s, float *left, float *right, unsigned n)
             if (hits & 1) station_trigger(s, (int)pad+1,
                                           (accents & 1) ? STATION_ACCENT : STATION_VELOCITY);
         kit_render_active_lanes(&s->kit, s->samples, lanes, span);
+        render_shaping(s, lanes, span);
         /* Render triggers and envelopes even while muted. Gate the lane going
            into both dry and sends; existing shared returns ring naturally. */
         for (unsigned pad = 0; pad < KIT_PADS; ++pad) {

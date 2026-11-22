@@ -49,14 +49,13 @@
   </section>
 
   <section class="view" data-view="drum" role="tabpanel" aria-label="Drum">
-    <div class="row kit-row"><div class="picker"><span class="tag">KIT</span><button type="button" class="chunk nudge" id="kit-prev" aria-label="Previous kit">‹</button><select id="kit" aria-label="Kit preset"></select><button type="button" class="chunk nudge" id="kit-next" aria-label="Next kit">›</button></div></div>
+    <div class="row kit-row"><div class="picker"><span class="tag">PRESET</span><select id="recipe" aria-label="Drum preset"></select></div><div class="picker"><span class="tag">KIT</span><button type="button" class="chunk nudge" id="kit-prev" aria-label="Previous kit">‹</button><select id="kit" aria-label="Kit preset"></select><button type="button" class="chunk nudge" id="kit-next" aria-label="Next kit">›</button></div></div>
     <div class="voice-head">
       <button type="button" class="chunk nudge" id="voice-prev" aria-label="Previous drum">‹</button>
       <button type="button" class="drum-pick" id="drum-pick" aria-haspopup="dialog" aria-label="Choose drum"><h2 id="sound-heading">01 KICK</h2><i aria-hidden="true">▾</i></button>
       <button type="button" class="chunk nudge" id="voice-next" aria-label="Next drum">›</button>
       <button id="audition" class="chunk blue" type="button">AUDITION</button>
     </div>
-    <div class="recipes"><select id="recipe" class="sr" tabindex="-1" aria-hidden="true"></select><div id="recipe-seg" class="seg presets" role="group" aria-label="Preset"></div><span class="custom-tag" id="custom-tag">CUSTOM</span></div>
     <div class="choices" id="choices"></div>
     <div class="knobs big" id="params"></div>
   </section>
