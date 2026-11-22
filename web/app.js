@@ -103,6 +103,17 @@ function knob({id,label,min,max,value,def=value,fmt=String,onInput,cls=""}){
   wrap.input=input;wrap.set=v=>{input.value=v;draw();};
   draw();return wrap;
 }
+/* Size an editor's knobs to its box: try every row count, keep the layout with the largest dial. */
+function fitKnobs(box){
+  const ks=[...box.children].filter(k=>k.classList.contains("knob")&&!k.hidden),n=ks.length;
+  const w=box.clientWidth,h=box.clientHeight;if(!n||!w||!h)return;
+  const cs=getComputedStyle(box),gx=parseFloat(cs.columnGap)||16,gy=parseFloat(cs.rowGap)||12,extra=ks.some(k=>k.querySelector(".gr"))?18:0;
+  let best=0,cols=n;
+  for(let r=1;r<=n;r++){const c=Math.ceil(n/r);const size=Math.min((w-(c-1)*gx)/c/1.12,((h-(r-1)*gy)/r-extra-16)/1.62);if(size>best){best=size;cols=c;}}
+  box.style.setProperty("--dial",Math.round(Math.max(38,Math.min(200,best)))+"px");box.style.gridTemplateColumns=`repeat(${cols},auto)`;
+}
+function fitCentre(box){const w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;box.style.setProperty("--dial",Math.round(Math.max(46,Math.min(170,(h-40)/1.6,w*.17)))+"px");}
+const fitter=new ResizeObserver(es=>es.forEach(e=>e.target.classList.contains("lfo-centre")?fitCentre(e.target):fitKnobs(e.target)));
 /* chunky segmented buttons */
 function segment(host,labels,value,onPick,{label="",cls=""}={}){
   host.replaceChildren();host.className="seg "+cls;host.setAttribute("role","group");if(label)host.setAttribute("aria-label",label);
@@ -186,7 +197,7 @@ function gridBuild(){
   grid.append(make("span","",{class:"axis"}));
   // Steps sit in explicit columns with a spacer column after each group of four.
   // Phones turn the grid: drums across the top, steps 1-16 down the screen (--sr / --pc).
-  const place=(el,n)=>{el.style.setProperty("--c",String(3+n+Math.floor(n/4)));el.style.setProperty("--sr",String(3+n+Math.floor(n/4)));};
+  const place=(el,n)=>{const at=String(2+n+Math.floor(n/4));el.style.setProperty("--c",at);el.style.setProperty("--sr",at);};
   for(let n=0;n<16;n++){const b=make("span",String(n+1),{class:"hrow"+(n%4===0?" beat":""),"data-half":n<8?0:1,"data-step":n});place(b,n);number.push(b);grid.append(b);}
   for(let p=0;p<11;p++){
     const lane=make("button",short[p],{type:"button",class:"lane",title:names[p],"aria-label":"Audition "+names[p]});
@@ -255,12 +266,15 @@ function buildParams(){
       knobs.push([k,kn]);area.append(kn);
     }
   }
-  refreshLocks();
+  refreshLocks();fitKnobs(area);
 }
 
 /* ---------- mixer view ---------- */
 function buildMixer(){
   const area=$("mixer");
+  const legend=make("div",null,{class:"strip legend","aria-hidden":"true"});
+  [["","lg-name"],["LEVEL","lg-level"],["REV","lg-k"],["DLY","lg-k"],["PAN","lg-k"],["M","lg-m"]].forEach(([t,c])=>legend.append(make("span",t,{class:c})));
+  area.append(legend);
   for(let p=1;p<=11;p++){
     const strip=make("div",null,{class:"strip"}),id="mix-level-"+p;
     const sends=[0,1].map(w=>knob({id:"mix-send-"+w+"-"+p,label:w?"DLY":"REV",min:0,max:100,value:state.sends[p-1][w],def:defaultSends[p-1][w],fmt:pct,onInput:v=>setSend(p,w,v),cls:"mini"}));
@@ -334,7 +348,7 @@ function buildLFOs(){
     redraw();
     lfoDraw[i]=()=>{const ph=(lfoPhase[i]>>>0)/4294967296;dot.setAttribute("cx",(4+ph*156).toFixed(1));dot.setAttribute("cy",(60-lfoY(spec.wave,ph)*48*(.15+.85*spec.depth/100)).toFixed(1));};
     lfoDraw[i]();
-    slot.append(route,centre);$("lfo-controls").append(slot);
+    slot.append(route,centre);$("lfo-controls").append(slot);fitter.observe(centre);
   }
   showLFO(bounded(ui.lfo,0,1)?ui.lfo:0);
 }
@@ -402,7 +416,22 @@ function wireFile(prefix,kind){
 }
 
 /* ---------- audio ---------- */
-let outBar;const grBars=[];
+let outBar,analyser,scopeBuf;const grBars=[];
+/* BUS scope: the output waveform, triggered on a rising zero crossing, with a faint phosphor trail. */
+function drawScope(){
+  requestAnimationFrame(drawScope);
+  if(document.body.dataset.view!=="bus"||document.hidden)return;
+  const c=$("bus-scope"),g=c.getContext("2d"),dpr=devicePixelRatio||1,w=Math.round(c.clientWidth*dpr),h=Math.round(c.clientHeight*dpr);
+  if(!w||!h)return;if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+  const plain=document.body.classList.contains("fx-off");
+  g.shadowBlur=0;g.fillStyle=plain?"#1A0A14":"rgba(26,10,20,.32)";g.fillRect(0,0,w,h);
+  g.strokeStyle="#5A3A4D";g.lineWidth=dpr;g.setLineDash([4*dpr,4*dpr]);g.beginPath();g.moveTo(0,h/2);g.lineTo(w,h/2);g.stroke();g.setLineDash([]);
+  if(!analyser)return;
+  if(!scopeBuf)scopeBuf=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(scopeBuf);
+  const N=1024;let start=0;for(let i=1;i<scopeBuf.length-N;i++)if(scopeBuf[i-1]<=0&&scopeBuf[i]>0){start=i;break;}
+  g.strokeStyle="#55A0C9";g.lineWidth=2*dpr;if(!plain){g.shadowColor="#55A0C9";g.shadowBlur=8*dpr;}
+  g.beginPath();for(let i=0;i<N;i++){const y=h/2-Math.max(-1,Math.min(1,scopeBuf[start+i]*1.4))*h*.44;i?g.lineTo(i/(N-1)*w,y):g.moveTo(0,y);}g.stroke();
+}
 async function enableAudio(){
   if(ctx?.state==="running"&&port)return true;
   if(connecting)return connecting;
@@ -414,6 +443,7 @@ async function enableAudio(){
         await ctx.audioWorklet.addModule(new URL("worklet.js",import.meta.url));
         const node=new AudioWorkletNode(ctx,"bongdrums",{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[2],processorOptions:{module}});
         const gain=ctx.createGain();gain.gain.value=.5;node.connect(gain).connect(ctx.destination);port=node.port;
+        analyser=ctx.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=0;node.connect(analyser);
         port.onmessage=({data})=>{
           if(active!==data.step||playingBank!==data.bank||queuedBank!==data.queued){
             const promoted=playing&&playingBank!==data.bank&&data.queued<0;
@@ -468,6 +498,7 @@ try{
     macroKnobs.push(k);$("macros").append(k);
   });
   for(const c of document.querySelectorAll("input[name=busmode]"))c.onchange=()=>setDry(c.value==="dry");
+  fitter.observe($("params"));fitter.observe($("macros"));requestAnimationFrame(drawScope);
   setDry(state.dry,true);
   selectVoice(1);wireFile("pattern","Pattern");wireFile("preset","Drum Preset");
   viewKit();

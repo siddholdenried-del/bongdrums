@@ -107,7 +107,17 @@ let livePeak=0;for(let i=0;i<10;i++){livePeak=Math.max(livePeak,await q());await
 // Returns: real controls, saved with the rest of the state.
 await js(`(()=>{const r=document.getElementById("return-0");r.value=120;r.dispatchEvent(new Event("input"));})()`);
 await js('document.querySelector("#play").click()');
-console.log("Five views switch without stopping playback; return controls wired");
+// Editors size their knobs to the space; the BUS scope draws the live output; mutes sit at the right.
+await call("Emulation.setDeviceMetricsOverride",{width:1280,height:720,deviceScaleFactor:1,mobile:false});await wait(200);
+await js(`document.querySelector('.modes [data-tab=drum]').click()`);await wait(120);
+assert.ok(await js('parseFloat(getComputedStyle(document.querySelector("#params .dial")).width)')>=90,"drum knobs fill their space");
+await js(`document.querySelector('.modes [data-tab=sequence]').click()`);await wait(80);
+assert.deepEqual(await js('(()=>{const l=document.querySelector(".score .lane").getBoundingClientRect(),m=document.querySelector(".score .mute").getBoundingClientRect(),s=document.querySelector(".score .step[data-step=\'15\']").getBoundingClientRect();return [Math.abs(l.width-m.width)<1&&Math.abs(l.height-m.height)<1,m.left>s.right]})()'),[true,true],"audition and mute buttons match; mute is right of step 16");
+await js('document.querySelector("#play").click()');for(let i=0;i<30&&await js('document.querySelector("#status").textContent')!=="Playing";i++)await wait(50);
+await js(`document.querySelector('.modes [data-tab=bus]').click()`);await wait(500);
+assert.ok(await js('(()=>{const c=document.getElementById("bus-scope"),d=c.getContext("2d").getImageData(0,0,c.width,c.height).data;let lit=0;for(let i=0;i<d.length;i+=4)if(d[i+2]>150&&d[i]<120)lit++;return lit})()')>50,"scope draws the output");
+await js('document.querySelector("#play").click()');await js(`document.querySelector('.modes [data-tab=sequence]').click()`);
+console.log("Five views switch without stopping playback; return controls, knob fitting, scope and mute placement wired");
 // One-screen instrument: no page scroll at phone or desktop sizes.
 for(const [w,h] of [[320,568],[390,844],[1280,720],[1440,900]]){
  for(const v of ["drum","lfo","mixer","bus","sequence"]){

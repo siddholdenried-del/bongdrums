@@ -8,11 +8,12 @@ Run `python3 -m http.server 48569 --bind 127.0.0.1 --directory web` from this fo
 
 The instrument fits one window with no page scrolling and shows one editor at a time. Only the transport (Play, Rec), tempo and five mode tabs stay on screen. Switching tabs never stops playback, changes the playing pattern or cuts tails.
 
-- **SEQUENCE:** the full 11-lane, 16-step grid in groups of four, with lane mutes, A/B and swing. Accents carry a dot and the playhead has its own marker. On portrait phones the grid turns so all 16 steps fit on one screen: drums run across the top and steps run down.
+- **SEQUENCE:** the full 11-lane, 16-step grid in groups of four, filling the view, with A/B and swing. Each lane starts with an audition button and ends with a mute button the same size. Accents carry a dot and the playhead has its own marker. On portrait phones the grid turns so all 16 steps fit on one screen: audition buttons run across the top, steps run down and mutes sit at the bottom.
 - **DRUM:** one voice at a time, with its knobs centred, the drum selector, kit and preset pickers, and AUDITION.
 - **LFO:** LFO 1 or LFO 2, with the live waveform, rate and depth in the centre. Drum, target, shape and sync/free sit around them.
-- **MIXER:** per-drum level, pan, mute, and REVERB and DELAY sends. The REVERB RETURN and DELAY RETURN faders sit on their own panel. Signal flow: DRUMS + REVERB RETURN + DELAY RETURN → DRUM BUS → OUTPUT. Both returns sum in before the bus processors.
-- **BUS:** Saturator, Compressor, Transient and Limiter, with gain-reduction meters under Compressor and Limiter.
+- **MIXER:** per-drum level, pan, mute, and REVERB and DELAY sends. On phones each drum is one row with a horizontal level slider. The REVERB RETURN and DELAY RETURN faders sit on their own panel. Signal flow: DRUMS + REVERB RETURN + DELAY RETURN → DRUM BUS → OUTPUT. Both returns sum in before the bus processors.
+- **BUS:** a live output oscilloscope above Saturator, Compressor, Transient and Limiter, with gain-reduction meters under Compressor and Limiter.
+- Editor knobs are sized from the space each view actually has, choosing the row layout that gives the largest knobs.
 - The ☰ menu holds FX OFF (removes the VHS texture), file sharing, the key map and links. The VHS layer stays behind the controls and is static when the system asks for reduced motion.
 - **Kits:** 11 factory kits (`web/library.js`), each a choice of factory recipes plus a few slider edits, levels, pans, sends, return levels, the four bus macros and Dry/Bus. Any edit turns the kit into *Custom kit*.
 - **Patterns:** 16 factory patterns with their own tempo and swing. Loading writes into the bank you are editing (A or B).

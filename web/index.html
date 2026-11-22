@@ -74,6 +74,7 @@
 
   <section class="view" data-view="bus" role="tabpanel" aria-label="Drum bus">
     <fieldset class="seg mode"><legend class="sr">Bus processing mode</legend><label><input type="radio" name="busmode" value="dry">DRY</label><label><input type="radio" name="busmode" value="bus">BUS</label></fieldset>
+    <div class="bus-scope"><canvas id="bus-scope" role="img" aria-label="Output oscilloscope"></canvas><span class="scope-label">OUTPUT</span></div>
     <div class="knobs big" id="macros"></div>
     <div class="meters"><span>OUT</span><span class="meter"><i id="out-bar"></i></span></div>
     <p class="hint">BUS SUMS THE DRUMS WITH THE REVERB AND DELAY RETURNS, THEN SATURATOR → COMPRESSOR → TRANSIENT → LIMITER. DRY HEARS THE DRUMS ONLY.</p>
