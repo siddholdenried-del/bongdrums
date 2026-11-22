@@ -84,18 +84,43 @@ await call("Page.reload");await wait(550);
 assert.deepEqual(await js(`[document.querySelector(".step").dataset.state,document.querySelector("#swing").value,document.querySelector("#lfo-0-depth").value,document.querySelector("#tempo").value]`),["1","50","0","116"]);
 await js(`document.querySelector('[data-pattern="1"]').click()`);assert.equal(await js('document.querySelector(".step").dataset.state'),"0");
 console.log("Real browser A/B queue, mute/swing/LFO persistence, staged file import/export and v1 migration passed");
-for(const w of [320,390,1440]){
- await call("Emulation.setDeviceMetricsOverride",{width:w,height:1000,deviceScaleFactor:1,mobile:w<600});await wait(250);
- const p=await js('({w:innerWidth,viewport:document.documentElement.scrollWidth,grid:document.querySelector(".score-wrap").scrollWidth,clip:document.querySelector(".score-wrap").clientWidth})');
- assert.ok(p.viewport<=p.w);
- if(w<600){
-   assert.ok(p.grid>p.clip);
-   await js('document.querySelectorAll(".banks button")[3].click()');
-   assert.ok(await js('document.querySelector(".score-wrap").scrollLeft')>400);
-   await js('document.querySelectorAll(".banks button")[0].click()');
-   assert.equal(await js('document.querySelector(".score-wrap").scrollLeft'),0);
+// Kits, patterns and the musical key layout (A S D / E R T / J K L / U I).
+await js(`(()=>{const k=document.getElementById("kit");k.value="2";k.dispatchEvent(new Event("change"));})()`);
+assert.deepEqual(await js(`[document.querySelector("#kit").selectedOptions[0].text,document.querySelector("#recipe").selectedOptions[0].text]`),["909 WAREHOUSE","909 PUNCH"]);
+await js(`document.querySelector("#groove-next").click()`);
+assert.ok(await js(`document.querySelector("#groove").value!=="-1"&&document.querySelector("#tempo").value>0`));
+for(const [code,name] of [["KeyA","01 KICK"],["KeyR","05 MID TOM"],["KeyK","08 OPEN HAT"],["KeyI","11 PERC B"]]){
+  await js(`document.body.dispatchEvent(new KeyboardEvent("keydown",{code:"${code}",bubbles:true}))`);
+  assert.equal(await js(`document.querySelector("#sound-heading").textContent`),name);
+}
+await js(`(()=>{const l=document.getElementById("mix-level-1");l.value=40;l.dispatchEvent(new Event("input"));})()`);
+assert.equal(await js(`document.querySelector("#kit").value`),"-1");
+console.log("Kit and pattern library, musical hotkeys and custom-kit marking passed");
+// Views are display only: switching through all five keeps playback, the playing bank and tails.
+await js('document.querySelector("#play").click()');
+for(let i=0;i<30&&await js('document.querySelector("#status").textContent')!=="Playing";i++)await wait(50);
+const before=await js('document.querySelector("#bank-readout").textContent');
+for(const v of ["drum","lfo","mixer","bus","sequence"])await js(`document.querySelector('.modes [data-tab=${v}]').click()`);
+await wait(200);
+assert.deepEqual(await js('[document.querySelector("#status").textContent,document.querySelector("#bank-readout").textContent,document.body.dataset.view]'),["Playing",before,"sequence"]);
+let livePeak=0;for(let i=0;i<10;i++){livePeak=Math.max(livePeak,await q());await wait(60);}assert.ok(livePeak>.02,"still sounding after view changes "+livePeak);
+// Returns: real controls, saved with the rest of the state.
+await js(`(()=>{const r=document.getElementById("return-0");r.value=120;r.dispatchEvent(new Event("input"));})()`);
+await js('document.querySelector("#play").click()');
+console.log("Five views switch without stopping playback; return controls wired");
+// One-screen instrument: no page scroll at phone or desktop sizes.
+for(const [w,h] of [[320,568],[390,844],[1280,720],[1440,900]]){
+ for(const v of ["drum","lfo","mixer","bus","sequence"]){
+  await js(`document.querySelector('.modes [data-tab=${v}]').click()`);
+  const o=await js('({sh:document.documentElement.scrollHeight,h:innerHeight,sw:document.documentElement.scrollWidth,w:innerWidth})');
+  assert.ok(o.sh<=o.h&&o.sw<=o.w,`${v} scrolls at ${w}x${h}`);
  }
+ await call("Emulation.setDeviceMetricsOverride",{width:w,height:h,deviceScaleFactor:1,mobile:w<760});await wait(250);
+ const p=await js('({w:innerWidth,h:innerHeight,sw:document.documentElement.scrollWidth,sh:document.documentElement.scrollHeight,steps:[...document.querySelectorAll(".step")].filter(s=>s.offsetParent).length})');
+ assert.ok(p.sw<=p.w&&p.sh<=p.h,`page scrolls at ${w}x${h}: ${JSON.stringify(p)}`);
+ assert.equal(p.steps,176,"all 16 steps of all 11 drums on one screen at "+w);
  const s=await call("Page.captureScreenshot",{format:"png"});await writeFile(`BongDrums-${w}.png`,Buffer.from(s.data,"base64"));
 }
+console.log("No page scroll at 320x568, 390x844, 1280x720 and 1440x900; all 176 steps on one screen at every size");
 ws.close();
 }finally{proc.kill();}

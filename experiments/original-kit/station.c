@@ -113,6 +113,13 @@ void station_level(Station *s, int pad, float level)
     mix.pad[pad-1].level = level > 1 ? 1 : level;
     station_set_mix(s, &mix);
 }
+void station_pan(Station *s, int pad, float pan)
+{
+    if (pad < 1 || pad > KIT_PADS || !(pan >= -1.f && pan <= 1.f)) return;
+    BusMix mix = s->mix;
+    mix.pad[pad-1].pan = pan;
+    station_set_mix(s, &mix);
+}
 void station_send(Station *s, int pad, int which, float amount)
 {
     if (pad < 1 || pad > KIT_PADS || (unsigned)which > 1 || !(amount >= 0)) return;

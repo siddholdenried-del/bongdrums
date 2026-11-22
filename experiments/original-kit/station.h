@@ -46,6 +46,8 @@ void station_lfo_param(Station *s, int slot, int param);
 void station_level(Station *s, int pad, float level);
 /* which: 0 = ROOM reverb send, 1 = DIGI delay send; amount 0..1. */
 void station_send(Station *s, int pad, int which, float amount);
+/* Pan -1 (left) .. +1 (right) through the stock x0x pan law; 0 is centre. */
+void station_pan(Station *s, int pad, float pan);
 void station_mute(Station *s, int pad, int muted);
 /* Hit with the pad's stored patch plus any per-hit LFO parameter offsets. */
 void station_trigger(Station *s, int pad, float velocity);

@@ -4,7 +4,22 @@ BongDrums is an 11-voice, 16-step drum instrument by BongSoft, provided by BongT
 
 ## Play
 
-Run `python3 -m http.server 48569 --bind 127.0.0.1 --directory web` from this folder and open http://127.0.0.1:48569 in a browser. On macOS, **Open BongDrums.command** does both. Click **Play** for the sequencer, or **Audition** for a selected voice. The workbench includes three starting patterns, a blank pattern, hit/accent entry, 57 factory sounds, per-voice editing, and Dry/Bus comparison. Each drum has its own level, plus reverb and delay sends into one shared ROOM reverb and one DIGI delay; each send is filtered for its drum type before it joins them (sends sound in Bus mode only). Each LFO picks a drum, then either that drum's level (continuous) or one of its sliders (sampled at every hit). State saves in the browser only. The meters show gain reduction; the listening output has a fixed −6 dB safety trim.
+Run `python3 -m http.server 48569 --bind 127.0.0.1 --directory web` from this folder and open http://127.0.0.1:48569 in a browser. On macOS, **Open BongDrums.command** does both.
+
+The instrument fits one window with no page scrolling and shows one editor at a time. Only the transport (Play, Rec), tempo and five mode tabs stay on screen. Switching tabs never stops playback, changes the playing pattern or cuts tails.
+
+- **SEQUENCE:** the full 11-lane, 16-step grid in groups of four, with lane mutes, A/B and swing. Accents carry a dot and the playhead has its own marker. On portrait phones the grid turns so all 16 steps fit on one screen: drums run across the top and steps run down.
+- **DRUM:** one voice at a time, with its knobs centred, the drum selector, kit and preset pickers, and AUDITION.
+- **LFO:** LFO 1 or LFO 2, with the live waveform, rate and depth in the centre. Drum, target, shape and sync/free sit around them.
+- **MIXER:** per-drum level, pan, mute, and REVERB and DELAY sends. The REVERB RETURN and DELAY RETURN faders sit on their own panel. Signal flow: DRUMS + REVERB RETURN + DELAY RETURN → DRUM BUS → OUTPUT. Both returns sum in before the bus processors.
+- **BUS:** Saturator, Compressor, Transient and Limiter, with gain-reduction meters under Compressor and Limiter.
+- The ☰ menu holds FX OFF (removes the VHS texture), file sharing, the key map and links. The VHS layer stays behind the controls and is static when the system asks for reduced motion.
+- **Kits:** 11 factory kits (`web/library.js`), each a choice of factory recipes plus a few slider edits, levels, pans, sends, return levels, the four bus macros and Dry/Bus. Any edit turns the kit into *Custom kit*.
+- **Patterns:** 16 factory patterns with their own tempo and swing. Loading writes into the bank you are editing (A or B).
+- **Play it:** keys sound on press, and **Shift** plays an accent. Click a lane name to audition it. Lanes light when the sequencer hits them. **Rec** writes what you play into the playing bank, rounded to the nearest step. Drag across steps to paint them.
+- **Keys, laid out musically:** left hand **A S D** = kick, snare, clap; toms climb above it on **E R T** (low → high); right hand **J K L** = closed hat, open hat, cymbal; percussion above it on **U I**. **1–9 0 -** also play the drums in order. **Space** plays/stops, **Enter** toggles Rec.
+- **Sound:** 57 factory sounds with per-voice knobs. Each drum has its own level and pan, plus REVERB and DELAY sends into one shared reverb and one shared delay, each with its own return level. Each send is filtered for its drum type before it joins them, and sends sound in Bus mode only. Each LFO picks a drum, then that drum's level (continuous) or one of its sliders (sampled at every hit).
+- Knobs: drag up/down (Shift for fine), use the mouse wheel or arrow keys, double-click to reset. State saves in the browser only. The output meter shows peak, and the GR readouts show compressor and limiter gain reduction. The listening output has a fixed −6 dB safety trim.
 
 The AudioWorklet runs the original V6 procedural drums at a fixed 44.1 kHz; it will not substitute browser oscillators or samples if a device cannot provide the rate. Serve via HTTPS away from localhost. Do not use file://.
 
@@ -12,10 +27,11 @@ The AudioWorklet runs the original V6 procedural drums at a fixed 44.1 kHz; it w
 
 - On PATH: Bash, Emscripten SDK **4.0.11** (or set `EMCC`), a native C compiler, Node 22+ and Python 3.
 - `./build.sh` builds `web/bongdrums.wasm` from files inside this folder. All compiler inputs are listed in `corresponding-build-inputs.txt`.
+- `node verify-library.mjs` loads every factory kit and pattern through the C catalog.
 - `./verify-core.sh` compares native C and WASM output for 720 stereo 128-frame blocks in each of Dry and Bus and checks all 57 preset round trips.
 - `python3 tools/gen_tables.py` recreates the checked-in mathematical table header without reading or producing samples.
 - With the local server above running, `node verify-browser.mjs` runs the browser smoke test using macOS Chrome, or point `CHROME_BIN` at another Chromium binary. The script writes ignored local screenshots.
-- Browser checks cover 44.1 kHz audio, desktop and narrow layouts, editing/persistence, keyboard navigation and playback controls. Offscreen macOS WKWebView ran 44.1 kHz audio; physical iPhone/Safari user activation and unlisted sample rates are not established by those tests.
+- Browser checks cover 44.1 kHz audio, no page scroll at 320×568 through 1440×900, kits, patterns and hotkeys, editing/persistence, keyboard navigation and playback controls. Offscreen macOS WKWebView ran 44.1 kHz audio; physical iPhone/Safari user activation and unlisted sample rates are not established by those tests.
 
 ## License and redistribution
 
