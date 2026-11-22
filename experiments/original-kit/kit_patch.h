@@ -41,6 +41,10 @@ typedef struct {
     unsigned local_pads;
     TomPatch tom[3];
     MetalPatch hat[2], cymbal;
+    /* Per-drum output shaping, sampled at each strike like every control.
+       Tone -1 (low-pass, darker) .. 0 (off) .. +1 (high-pass, thinner);
+       Drive 0 (off) .. 1. Both at zero leave the voice untouched. */
+    float tone[11], drive[11];
 } KitPatch;
 
 static inline TomPatch kit_tom_controls(const KitPatch *p, int pad)

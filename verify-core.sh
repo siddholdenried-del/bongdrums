@@ -11,3 +11,4 @@ cc -O2 -std=c11 -ffp-contract=off -DPLAT_HOST -I"$E" -I"$ROOT/app/dsp" -I"$E/sto
 cc -O2 -std=c11 -ffp-contract=off -DPLAT_HOST -I"$E" -I"$ROOT/app/dsp" -I"$E/stock_tables" verify-mix.c bridge.c "$E"/{kit,presets,kit_math,shells,metal,perc,station,sequence,drum_bus,macro}.c "$ROOT/app/dsp/fxbus.c" -lm -o mix.tmp
 ./mix.tmp
 node verify-core.mjs
+node verify-shaping.mjs

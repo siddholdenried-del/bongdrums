@@ -1,28 +1,83 @@
 <!doctype html>
 <html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#230E1B">
 <title>BongDrums · Rhythm Console</title>
 <link rel="icon" type="image/svg+xml" href="art/bd-mark.svg"><link rel="stylesheet" href="desk.css">
 </head>
-<body><a class="skip" href="#deck">Skip to the sequencer</a>
-<header class="mast"><a class="brand" href="https://bongcult.com/"><b>BongCult</b></a><nav aria-label="Sites"><a href="https://bongcult.com/">Journal</a><a href="https://tools.bongcult.com/" aria-current="location">Audio Tools</a><a href="https://glockwizards.bongcult.com/">GWO</a><a href="https://bongcult.com/guestbook/">Guestbook</a></nav></header>
-<main id="deck">
-<header class="hero"><div><p class="kicker">BONGSOFT / INSTRUMENT 01</p><h1>BongDrums</h1><p>Eleven synthesized voices. A sixteen-step room to work in.</p><small>Browser instrument · V6 synthesis</small></div><figure><img src="art/beats-instrument.webp" alt="Engraving of Helmholtz’s double siren"></figure></header>
-<section aria-labelledby="seq-heading">
-<div class="transport"><div><h2 id="seq-heading">Pattern</h2><div class="lamp" id="status" role="status">Audio is off</div></div><button id="play" type="button">▶ Play</button><label>Tempo <input id="tempo" type="number" min="60" max="200" value="130" inputmode="numeric"> BPM</label><label><span id="load-label">Load into A</span> <select id="groove"><option value="" selected>Choose a pattern</option><option value="electro">Factory Electro</option><option value="house">Four on the Floor</option><option value="break">Broken Machine</option><option value="clear">Blank pattern</option></select></label></div>
-<div class="performance"><div class="patterns" role="group" aria-label="Edit pattern"><span>Edit</span><button type="button" data-pattern="0">A</button><button type="button" data-pattern="1">B</button></div><button id="activate-bank" type="button">Set A live</button><span id="bank-readout" aria-live="polite">Ready A</span><label class="swing" for="swing">Swing <input id="swing" type="range" min="50" max="75" value="50"><output for="swing" id="swing-value">50%</output></label></div>
-<div class="banks" aria-label="Step ranges"><span>Jump to steps</span><button type="button" data-bank="0">1–4</button><button type="button" data-bank="4">5–8</button><button type="button" data-bank="8">9–12</button><button type="button" data-bank="12">13–16</button></div>
-<div class="score-wrap" role="region" aria-label="Drum grid. Swipe to see all sixteen steps." tabindex="0"><div class="score" id="score" role="group" aria-label="Drum tracks and steps"></div></div>
-<p class="score-help">Tap steps to cycle <strong>off → hit → accent</strong>. Use arrow keys to navigate the grid. Tap a voice name to audition it, or <strong>M</strong> to mute its audio. Editing A/B never changes which bank plays. Queue a bank to switch on the next bar. Press <kbd>Space</kbd> outside the controls to play or stop.</p>
-<details class="text-files" id="pattern-drop"><summary>Share both patterns .txt</summary><div class="file-actions"><button type="button" id="pattern-export">Download</button><label class="file-pick">Choose or drop a text file<input type="file" id="pattern-file" accept=".txt,text/plain"></label><button type="button" id="pattern-apply" disabled>Apply</button></div><p id="pattern-notice" class="file-notice" role="status"></p></details>
-</section>
-<div class="lower">
-<section class="panel sound" aria-labelledby="sound-heading"><div class="panel-top"><div><p class="kicker">VOICE REGISTER</p><h2 id="sound-heading">Sound</h2></div><img src="art/manual.png" alt=""></div><div id="voice-tabs" aria-label="Choose a voice" class="voice-tabs"></div>
-<div class="picker"><label for="recipe">Preset</label><select id="recipe"></select><button id="audition" type="button">Audition</button></div><div class="mix" id="level" role="group" aria-label="Mix for the selected drum"></div><div class="params" id="params"></div><details class="text-files" id="preset-drop"><summary>Share selected drum preset .txt</summary><div class="file-actions"><button type="button" id="preset-export">Download</button><label class="file-pick">Choose or drop a text file<input type="file" id="preset-file" accept=".txt,text/plain"></label><button type="button" id="preset-apply" disabled>Apply</button></div><p id="preset-notice" class="file-notice" role="status"></p></details></section>
-<section class="panel bus" aria-labelledby="bus-heading"><div class="panel-top"><div><p class="kicker">STEREO RETURN</p><h2 id="bus-heading">Drum bus</h2></div><fieldset class="mode"><legend class="sr">Bus processing mode</legend><label><input type="radio" name="busmode" value="dry">Dry</label><label><input type="radio" name="busmode" value="bus">Bus</label></fieldset></div>
-<p>All eleven drums share one ROOM reverb and one DIGI delay. Each drum’s send is filtered for its type on the way in (low end kept out of the room, hat fizz kept out of the repeats). Set each send amount under Sound → Mix. Sends sound only in Bus mode, then everything passes the four V6 processors.</p><div id="macros"></div><div class="meters" aria-label="Gain reduction, in decibels"><span>Comp <output id="comp">0.0 dB</output></span><span>Limit <output id="limit">0.0 dB</output></span></div>
-</section>
+<body data-view="sequence">
+<div class="vhs" aria-hidden="true"><i class="drift"></i><i class="lines"></i><i class="track"></i><i class="vig"></i></div>
+<div class="app">
+<header class="bar">
+  <h1 class="word">BONGDRUMS</h1>
+  <div class="transport">
+    <button id="play" class="chunk cream" type="button" aria-pressed="false">▶ PLAY</button>
+    <button id="rec" class="chunk" type="button" aria-pressed="false" title="Record what you play into the playing bank (Enter)">● REC</button>
+    <span class="pipe" aria-hidden="true">|</span>
+    <label class="bpm"><input id="tempo" type="number" min="60" max="200" value="130" inputmode="numeric" aria-label="Tempo in BPM"> BPM</label>
+    <span class="lamp" id="status" role="status">Audio is off</span>
+  </div>
+  <nav class="modes" role="tablist" aria-label="Editor">
+    <button type="button" role="tab" data-tab="sequence">SEQUENCE</button>
+    <button type="button" role="tab" data-tab="drum">DRUM</button>
+    <button type="button" role="tab" data-tab="lfo">LFO</button>
+    <button type="button" role="tab" data-tab="mixer">MIXER</button>
+    <button type="button" role="tab" data-tab="bus">BUS</button>
+  </nav>
+  <details class="menu" id="menu"><summary aria-label="Menu">☰</summary>
+    <div class="menu-body">
+      <label class="fx-toggle"><input type="checkbox" id="fx-off"> FX OFF <small>(NO VHS TEXTURE)</small></label>
+      <section><h2>KEYS</h2><div class="keymap"><span><kbd>E</kbd><kbd>R</kbd><kbd>T</kbd> LT MT HT</span><span><kbd>U</kbd><kbd>I</kbd> P1 P2</span><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> BD SD CP</span><span><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> CH OH CY</span></div><p>SHIFT = ACCENT · 1–9 0 - = DRUMS IN ORDER · SPACE = PLAY/STOP · ENTER = REC. DRAG STEPS TO PAINT. DRAG KNOBS UP/DOWN (SHIFT = FINE), DOUBLE-CLICK TO RESET.</p></section>
+      <section><h2>SHARE PATTERN</h2><div class="text-files" id="pattern-drop"><div class="file-actions"><button type="button" class="chunk" id="pattern-export">DOWNLOAD</button><label class="file-pick">CHOOSE OR DROP<input type="file" id="pattern-file" accept=".txt,text/plain"></label><button type="button" class="chunk" id="pattern-apply" disabled>APPLY</button></div><p id="pattern-notice" class="file-notice" role="status"></p></div></section>
+      <section><h2>SHARE SELECTED DRUM</h2><div class="text-files" id="preset-drop"><div class="file-actions"><button type="button" class="chunk" id="preset-export">DOWNLOAD</button><label class="file-pick">CHOOSE OR DROP<input type="file" id="preset-file" accept=".txt,text/plain"></label><button type="button" class="chunk" id="preset-apply" disabled>APPLY</button></div><p id="preset-notice" class="file-notice" role="status"></p></div></section>
+      <section class="links"><a href="https://ghettomachine.bongcult.com/bongdrums/">ARCHITECTURE</a><a href="https://github.com/siddholdenried-del/bongdrums/archive/refs/tags/v0.4.0.zip">SOURCE CODE (GPLV3)</a><a href="https://bongcult.com/">BONGCULT</a><a href="https://tools.bongcult.com/">AUDIO TOOLS</a></section>
+      <p class="credit">BONGDRUMS BY BONGSOFT · PROVIDED BY BONGTECH · PART OF BONGCULT</p>
+    </div>
+  </details>
+</header>
+
+<main class="screen" id="screen">
+  <section class="view" data-view="sequence" role="tabpanel" aria-label="Sequence">
+    <div class="row seq-head">
+      <div class="seg" role="group" aria-label="Edit pattern"><button type="button" data-pattern="0">A</button><button type="button" data-pattern="1">B</button></div>
+      <button id="activate-bank" class="chunk" type="button">SET A LIVE</button>
+      <span id="bank-readout" aria-live="polite">READY A</span>
+      <div class="knob-slot" id="swing-slot"></div>
+      <div class="picker"><span class="tag" id="load-label">LOAD INTO A</span><button type="button" class="chunk nudge" id="groove-prev" aria-label="Previous pattern">‹</button><select id="groove" aria-label="Pattern preset"></select><button type="button" class="chunk nudge" id="groove-next" aria-label="Next pattern">›</button></div>
+    </div>
+    <div class="score-wrap"><div class="score" id="score" role="group" aria-label="Drum lanes and steps. Tap to cycle off, hit, accent; drag to paint."></div></div>
+  </section>
+
+  <section class="view" data-view="drum" role="tabpanel" aria-label="Drum">
+    <div class="row kit-row"><div class="picker"><span class="tag">PRESET</span><select id="recipe" aria-label="Drum preset"></select></div><div class="picker"><span class="tag">KIT</span><button type="button" class="chunk nudge" id="kit-prev" aria-label="Previous kit">‹</button><select id="kit" aria-label="Kit preset"></select><button type="button" class="chunk nudge" id="kit-next" aria-label="Next kit">›</button></div></div>
+    <div class="voice-head">
+      <button type="button" class="chunk nudge" id="voice-prev" aria-label="Previous drum">‹</button>
+      <button type="button" class="drum-pick" id="drum-pick" aria-haspopup="dialog" aria-label="Choose drum"><h2 id="sound-heading">01 KICK</h2><i aria-hidden="true">▾</i></button>
+      <button type="button" class="chunk nudge" id="voice-next" aria-label="Next drum">›</button>
+      <button id="audition" class="chunk blue" type="button">AUDITION</button>
+    </div>
+    <div class="choices" id="choices"></div>
+    <div class="knobs big" id="params"></div>
+  </section>
+
+  <section class="view" data-view="lfo" role="tabpanel" aria-label="LFO">
+    <div class="seg lfo-pick" role="group" aria-label="LFO"><button type="button" data-lfo="0" aria-pressed="true">LFO 1</button><button type="button" data-lfo="1" aria-pressed="false">LFO 2</button></div>
+    <div id="lfo-controls"></div>
+  </section>
+
+  <section class="view" data-view="mixer" role="tabpanel" aria-label="Mixer">
+    <p class="flow" aria-label="Signal flow">DRUMS <b>+</b> REVERB RETURN <b>+</b> DELAY RETURN <b>→</b> DRUM BUS <b>→</b> OUTPUT</p>
+    <div class="mixer"><div class="strips" id="mixer"></div><div class="returns" id="returns" role="group" aria-label="Returns"></div></div>
+  </section>
+
+  <section class="view" data-view="bus" role="tabpanel" aria-label="Drum bus">
+    <fieldset class="seg mode"><legend class="sr">Bus processing mode</legend><label><input type="radio" name="busmode" value="dry">DRY</label><label><input type="radio" name="busmode" value="bus">BUS</label></fieldset>
+    <div class="bus-scope"><canvas id="bus-scope" role="img" aria-label="Output oscilloscope"></canvas><span class="scope-label">OUTPUT</span></div>
+    <div class="knobs big" id="macros"></div>
+    <div class="meters"><span>OUT</span><span class="meter"><i id="out-bar"></i></span></div>
+    <p class="hint">BUS SUMS THE DRUMS WITH THE REVERB AND DELAY RETURNS, THEN SATURATOR → COMPRESSOR → TRANSIENT → LIMITER. DRY HEARS THE DRUMS ONLY.</p>
+  </section>
+</main>
 </div>
-<section class="panel mod" aria-labelledby="mod-heading"><div class="panel-top"><div><p class="kicker">CONTROL VOLTAGE</p><h2 id="mod-heading">Modulation</h2></div></div><p>Two independent LFOs. Pick a drum, then what to move: its level (continuous, before the dry mix and effect sends) or one of its sliders. A slider target is read each time the drum strikes, swinging around the value you set, so ringing tails keep the sound they started with. Both LFOs can run together. Sync restarts with Play; free rate keeps cycling.</p><div id="lfo-controls"></div></section>
-<footer><span>BongDrums by BongSoft · provided by BongTech · part of BongCult</span><a href="https://ghettomachine.bongcult.com/bongdrums/">Architecture</a><a href="https://github.com/siddholdenried-del/bongdrums/archive/refs/tags/v0.3.0.zip">Source code (GPLv3)</a><details><summary>Artwork credits</summary><p>Helmholtz’s double siren engraving from John Tyndall’s <a href="https://www.gutenberg.org/ebooks/54969"><i>Sound</i></a>; hand from Théodule Ribot’s <a href="https://www.clevelandart.org/art/2009.120.a"><i>Study of Hands</i></a>; border from Athanasius Kircher’s <a href="https://dcp-production-container.library.cornell.edu/catalog/ss%3A550164"><i>Musurgia Universalis</i></a>.</p></details></footer>
-</main><script type="module" src="app.js"></script></body></html>
+<div class="sheet" id="sheet" hidden><div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-head"><span id="sheet-title"></span><button type="button" class="chunk" id="sheet-close" aria-label="Close">✕</button></div><div class="sheet-grid" id="sheet-grid"></div></div></div>
+<script type="module" src="app.js"></script></body></html>
