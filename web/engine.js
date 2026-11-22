@@ -2,12 +2,18 @@ export function boot(module){
   const x=new WebAssembly.Instance(module).exports;
   x._initialize();x.bd_init();return x;
 }
+export function lfo(x,i,l){
+  x.bd_lfo(i,l.lane,l.wave,l.sync?1:0,l.sync?l.div:l.hz,l.depth);
+}
 export function apply(x,s){
+  s.lfos.forEach((l,i)=>lfo(x,i,l));
+  x.bd_bank(s.playBank);x.bd_swing(s.swing);
   x.bd_tempo(s.bpm);x.bd_dry(s.dry?1:0);
   for(let k=0;k<4;k++)x.bd_macro(k,s.macros[k]);
   for(let p=1;p<=11;p++){
     x.bd_recipe(p,s.voices[p-1].recipe);
     for(const [k,v] of s.voices[p-1].edits)x.bd_set(p,k,v);
-    for(let n=0;n<16;n++)x.bd_cell(p,n,s.rows[p-1][n]);
+    x.bd_mute(p,s.mutes[p-1]?1:0);
+    for(let b=0;b<2;b++)for(let n=0;n<16;n++)x.bd_bank_cell(b,p,n,s.banks[b][p-1][n]);
   }
 }

@@ -10,6 +10,8 @@ typedef struct {
     int bpm, running, current_step;              /* -1 when stopped */
     uint32_t phase;
     int downbeat_pending;
+    uint16_t hits_b[SEQ_PADS], accents_b[SEQ_PADS];
+    int bank, queued, swing, pair_swing;
 } Sequencer;
 
 /* The caller owns transport and pattern state on the rendering thread.
@@ -20,6 +22,9 @@ void seq_clear(Sequencer *seq);
 void seq_start(Sequencer *seq);
 void seq_stop(Sequencer *seq);
 void seq_set_tempo(Sequencer *seq, int bpm);
+void seq_select(Sequencer *seq, int bank);
+void seq_swing(Sequencer *seq, int percent);
+void seq_bank_cell(Sequencer *seq, int bank, int pad1, int step0, int state);
 void seq_cell(Sequencer *seq, int pad1, int step0, int state);
 
 /* One run of samples from the present time up to the next event or buffer end.

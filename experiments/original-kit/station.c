@@ -1,4 +1,5 @@
 #include "station.h"
+#include "kit_math.h"
 #include <string.h>
 
 KitPattern station_preset(void)
@@ -12,6 +13,8 @@ KitPattern station_preset(void)
     return pattern;
 }
 
+enum { LANE_RAMP = 64 };
+
 void station_init(Station *s)
 {
     kit_init(&s->kit);
@@ -23,6 +26,9 @@ void station_init(Station *s)
     s->comp_gr_db = s->limiter_gr_db = 0;
     s->mix = bus_default_mix();
     s->mix.dry_only = 1;
+    memset(s->lfo, 0, sizeof(s->lfo));
+    s->mute_mask = 0;
+    for (unsigned i = 0; i < KIT_PADS; ++i) s->lane_level[i] = LANE_RAMP;
     const KitPatch patch = kit_default_patch();
     for (unsigned i = 0; i < KIT_PADS; ++i) s->patch[i] = patch;
 }
@@ -67,8 +73,70 @@ void station_set_bypass(Station *s, int bypass)
     mix.dry_only = !!bypass;
     station_set_mix(s, &mix);
 }
-void station_start(Station *s) { seq_start(&s->clock); }
+void station_start(Station *s)
+{
+    seq_start(&s->clock);
+    for (unsigned i = 0; i < STATION_LFOS; ++i) if (s->lfo[i].sync)
+        s->lfo[i].phase = s->lfo[i].remainder = 0;
+}
 void station_stop(Station *s) { seq_stop(&s->clock); }
+void station_lfo(Station *s, int slot, int lane, int wave, int sync, int rate, int depth)
+{
+    if ((unsigned)slot >= STATION_LFOS || (unsigned)lane > KIT_PADS ||
+        (unsigned)wave > 2 || (unsigned)depth > 100 ||
+        (sync ? (unsigned)rate >= 7 : (rate < 5 || rate > 1200))) return;
+    StationLFO *l = &s->lfo[slot];
+    if (l->sync != (unsigned)!!sync) l->remainder = 0;
+    l->lane = lane; l->wave = wave; l->sync = !!sync; l->rate = rate; l->depth = depth;
+}
+
+/* Common denominator in each clock mode. A sample-rate phase increment and a
+ * retained fractional remainder avoid drift even at awkward BPMs. */
+static void render_lfo(StationLFO *l, int bpm, float *lanes[KIT_PADS], unsigned span)
+{
+    static const unsigned cycles_per_8_beats[7] = {1,2,4,8,16,32,64};
+    const unsigned den = KIT_RATE * (l->sync ? 480u : 100u);
+    const uint64_t num = (uint64_t)(l->sync ? bpm * cycles_per_8_beats[l->rate] : l->rate) << 32;
+    const uint32_t inc = (uint32_t)(num / den), rem = (uint32_t)(num % den);
+    unsigned active = l->depth && l->lane;
+    if (!active) for (unsigned p=0; p<KIT_PADS; ++p) active |= l->offset[p] != 0;
+    if (!active) {
+        uint64_t advance = l->remainder + (uint64_t)rem * span;
+        l->phase += inc*span + (uint32_t)(advance / den);
+        l->remainder = advance % den;
+        return;
+    }
+    const float depth = l->depth * .01f;
+    for (unsigned i=0; i<span; ++i) {
+        float wave;
+        if (l->wave == 1) {
+            const float t = (float)(l->phase >> 8) * (1.0f/16777216.0f);
+            wave = 1.0f - 4.0f * (t < .5f ? .5f-t : t-.5f);
+        } else {
+            wave = kit_sine(l->phase);
+            if (l->wave == 2) wave = 2.0f*kit_unit(.5f+2.0f*wave)-1.0f;
+        }
+        const float value = depth * (.5f + .5f * wave);
+        for (unsigned p=0; p<KIT_PADS; ++p) {
+            const float target = p+1 == l->lane ? value : 0;
+            float level = l->offset[p];
+            if (level < target) level = target-level < .015625f ? target : level+.015625f;
+            else if (level > target) level = level-target < .015625f ? target : level-.015625f;
+            l->offset[p]=level;
+            if (level && lanes[p]) lanes[p][i] *= 1.0f-level;
+        }
+        l->phase += inc;
+        l->remainder += rem;
+        if (l->remainder >= den) { l->remainder -= den; ++l->phase; }
+    }
+}
+void station_mute(Station *s, int pad, int muted)
+{
+    if (pad < 1 || pad > KIT_PADS) return;
+    unsigned bit = 1u << (pad - 1);
+    if (muted) s->mute_mask |= bit;
+    else s->mute_mask &= ~bit;
+}
 void station_hit(Station *s, int pad, float velocity, const KitPatch *patch)
 {
     kit_hit(&s->kit, pad, velocity, patch);
@@ -87,6 +155,23 @@ void station_render(Station *s, float *left, float *right, unsigned n)
             if (hits & 1) kit_hit(&s->kit, (int)pad+1,
                                   (accents & 1) ? STATION_ACCENT : STATION_VELOCITY, &s->patch[pad]);
         kit_render_active_lanes(&s->kit, s->samples, lanes, span);
+        /* Render triggers and envelopes even while muted. Gate the lane going
+           into both dry and sends; existing shared returns ring naturally. */
+        for (unsigned pad = 0; pad < KIT_PADS; ++pad) {
+            unsigned level = s->lane_level[pad];
+            unsigned goal = (s->mute_mask & (1u << pad)) ? 0 : LANE_RAMP;
+            if (level == goal) {
+                if (!level) lanes[pad] = NULL;
+                continue;
+            }
+            for (unsigned i = 0; i < span; ++i) {
+                if (level < goal) ++level;
+                else if (level > goal) --level;
+                if (lanes[pad]) lanes[pad][i] *= (float)level / (float)LANE_RAMP;
+            }
+            s->lane_level[pad] = level;
+        }
+        for (unsigned j = 0; j < STATION_LFOS; ++j) render_lfo(&s->lfo[j], s->clock.bpm, lanes, span);
         drum_bus_render(&s->bus, &s->mix, lanes, left, right, span);
         for (unsigned i = 0; i < span; ++i) {
             left[i] *= gain;

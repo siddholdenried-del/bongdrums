@@ -8,6 +8,14 @@ void bd_init(void){station_init(&s);}
 void bd_start(void){station_start(&s);}
 void bd_stop(void){station_stop(&s);}
 void bd_tempo(int bpm){KitPattern p={.bpm=bpm};for(unsigned i=0;i<11;i++){p.hits[i]=s.clock.hits[i];p.accents[i]=s.clock.accents[i];}station_set_pattern(&s,&p);}
+void bd_bank_cell(int bank,int p,int n,int v){if((unsigned)bank<=1)seq_bank_cell(&s.clock,bank,p,n,v);}
+void bd_bank(int bank){seq_select(&s.clock,bank);}
+int bd_active(void){return s.clock.bank;}
+int bd_queued(void){return s.clock.queued;}
+void bd_swing(int v){seq_swing(&s.clock,v);}
+void bd_lfo(int slot,int lane,int shape,int sync,int rate,int depth){station_lfo(&s,slot,lane,shape,sync,rate,depth);}
+int bd_lfo_phase(int slot){return (unsigned)slot<STATION_LFOS?(int)s.lfo[slot].phase:0;}
+void bd_mute(int p,int v){station_mute(&s,p,v);}
 void bd_cell(int p,int n,int v){seq_cell(&s.clock,p,n,v);}
 void bd_hit(int p,int accent){if(p>0&&p<=11)station_hit(&s,p,accent?STATION_ACCENT:STATION_VELOCITY,&s.patch[p-1]);}
 int bd_step(void){return s.clock.current_step;}

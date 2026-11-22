@@ -2,18 +2,37 @@
 #include "sequence.h"
 #include "kit_math.h"
 
-enum { STEP_UNITS = KIT_RATE * 15, MAX_STEP_FRAMES = STEP_UNITS / 60 };
+enum { STEP_UNITS = KIT_RATE * 15 };
 
-void seq_cell(Sequencer *s, int pad, int step, int state)
+void seq_bank_cell(Sequencer *s, int bank, int pad, int step, int state)
 {
     if (pad < 1 || pad > SEQ_PADS || (unsigned)step >= SEQ_STEPS || (unsigned)state > 2)
         return;
     uint16_t bit = (uint16_t)(1u << step);
     unsigned i = (unsigned)(pad - 1);
-    if (state) s->hits[i] |= bit;
-    else s->hits[i] &= (uint16_t)~bit;
-    if (state == 2) s->accents[i] |= bit;
-    else s->accents[i] &= (uint16_t)~bit;
+    uint16_t *h = bank ? s->hits_b : s->hits;
+    uint16_t *a = bank ? s->accents_b : s->accents;
+    if (state) h[i] |= bit;
+    else h[i] &= (uint16_t)~bit;
+    if (state == 2) a[i] |= bit;
+    else a[i] &= (uint16_t)~bit;
+}
+
+void seq_cell(Sequencer *s, int pad, int step, int state)
+{
+    seq_bank_cell(s, 0, pad, step, state);
+}
+
+void seq_select(Sequencer *s, int bank)
+{
+    if ((unsigned)bank > 1) return;
+    if (s->running) s->queued = bank == s->bank ? -1 : bank;
+    else s->bank = bank;
+}
+
+void seq_swing(Sequencer *s, int percent)
+{
+    s->swing = percent < 50 ? 50 : percent > 75 ? 75 : percent;
 }
 
 void seq_preset(Sequencer *s)
@@ -54,6 +73,8 @@ void seq_start(Sequencer *s)
 
 void seq_stop(Sequencer *s)
 {
+    if (s->queued >= 0) s->bank = s->queued;
+    s->queued = -1;
     s->running = 0;
     s->current_step = -1;
     s->phase = 0;
@@ -71,34 +92,54 @@ void seq_init(Sequencer *s)
 {
     *s = (Sequencer){0};
     s->bpm = 130;
+    s->swing = s->pair_swing = 50;
+    s->queued = -1;
     seq_stop(s);
     seq_preset(s);
+}
+
+/* Each adjacent pair remains two straight steps long. STEP_UNITS is divisible
+ * by 50 at the fixed kit rate, so integer percentages add no truncation. */
+static unsigned step_units(const Sequencer *s)
+{
+    unsigned share = (s->current_step & 1) ? 100u - s->pair_swing : (unsigned)s->pair_swing;
+    return share * (STEP_UNITS / 50u);
 }
 
 unsigned seq_span(Sequencer *s, unsigned max_frames, uint16_t *hits, uint16_t *accents)
 {
     *hits = *accents = 0;
     if (!s->running || !max_frames) return max_frames;
-    if (s->phase >= STEP_UNITS || s->downbeat_pending) {
-        if (s->downbeat_pending) s->downbeat_pending = 0;
+    unsigned units = step_units(s);
+    if (s->phase >= units || s->downbeat_pending) {
+        int initial = s->downbeat_pending;
+        if (initial) s->downbeat_pending = 0;
         else {
             /* Carry any fractional overshoot into the new step. */
-            s->phase -= STEP_UNITS;
+            s->phase -= units;
             s->current_step = (s->current_step + 1) % SEQ_STEPS;
         }
+        if (!(s->current_step & 1)) s->pair_swing = s->swing;
+        if (!initial && s->current_step == 0 && s->queued >= 0) {
+            s->bank = s->queued;
+            s->queued = -1;
+        }
+        units = step_units(s);
+        const uint16_t *h = s->bank ? s->hits_b : s->hits;
+        const uint16_t *a = s->bank ? s->accents_b : s->accents;
         uint16_t bit = (uint16_t)(1u << s->current_step);
         for (int pad = 0; pad < SEQ_PADS; ++pad) {
             uint16_t lane = (uint16_t)(1u << pad);
-            if (s->hits[pad] & bit) *hits |= lane;
-            if (s->accents[pad] & bit) *accents |= lane;
+            if (h[pad] & bit) *hits |= lane;
+            if (a[pad] & bit) *accents |= lane;
         }
     }
-    unsigned remaining = STEP_UNITS - s->phase;
+    unsigned remaining = units - s->phase;
     unsigned bpm = (unsigned)s->bpm;
     unsigned span = max_frames;
     /* Avoid a divide for ordinary callback spans that end before a boundary.
      * The bound on max_frames also makes the multiplication safe for UINT_MAX. */
-    if (max_frames > MAX_STEP_FRAMES || max_frames * bpm > remaining)
+    if (max_frames > (STEP_UNITS / 60u) * 2u || max_frames * bpm > remaining)
         span = (remaining + bpm - 1u) / bpm;
     s->phase += span * bpm;
     return span;
