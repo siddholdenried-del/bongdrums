@@ -9,7 +9,8 @@ Run `python3 -m http.server 48569 --bind 127.0.0.1 --directory web` from this fo
 The instrument fits one window with no page scrolling and shows one editor at a time. Only the transport (Play, Rec), tempo and five mode tabs stay on screen. Switching tabs never stops playback, changes the playing pattern or cuts tails.
 
 - **SEQUENCE:** the full 11-lane, 16-step grid in groups of four, filling the view, with A/B and swing. Each lane starts with an audition button and ends with a mute button the same size. Accents carry a dot and the playhead has its own marker. On portrait phones the grid turns so all 16 steps fit on one screen: audition buttons run across the top, steps run down and mutes sit at the bottom.
-- **DRUM:** one voice at a time, with its knobs centred, the drum selector, kit and preset pickers, and AUDITION.
+- **DRUM:** one voice at a time, with its knobs centred and AUDITION close by. The drum name opens a grid of all 11 drums, the drum's presets are a row of buttons, and Kit opens a grid of factory kits.
+- Kit, Pattern and the LFO drum use the same picker: a button that opens a sheet of large tiles (Escape or ✕ closes it). The LFO target is a row of buttons: LEVEL plus that drum's sliders.
 - **LFO:** LFO 1 or LFO 2, with the live waveform, rate and depth in the centre. Drum, target, shape and sync/free sit around them.
 - **MIXER:** per-drum level, pan, mute, and REVERB and DELAY sends. On phones each drum is one row with a horizontal level slider. The REVERB RETURN and DELAY RETURN faders sit on their own panel. Signal flow: DRUMS + REVERB RETURN + DELAY RETURN → DRUM BUS → OUTPUT. Both returns sum in before the bus processors.
 - **BUS:** a live output oscilloscope above Saturator, Compressor, Transient and Limiter, with gain-reduction meters under Compressor and Limiter.

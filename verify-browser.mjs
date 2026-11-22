@@ -95,7 +95,17 @@ for(const [code,name] of [["KeyA","01 KICK"],["KeyR","05 MID TOM"],["KeyK","08 O
 }
 await js(`(()=>{const l=document.getElementById("mix-level-1");l.value=40;l.dispatchEvent(new Event("input"));})()`);
 assert.equal(await js(`document.querySelector("#kit").value`),"-1");
-console.log("Kit and pattern library, musical hotkeys and custom-kit marking passed");
+// Pickers: a button opens a tile sheet; a tile sets the hidden select; Escape closes.
+await js(`document.querySelector('.modes [data-tab=drum]').click();document.querySelector("#kit + .pick").click()`);
+assert.deepEqual(await js('[document.getElementById("sheet").hidden,document.querySelectorAll("#sheet-grid .tile").length]'),[false,11]);
+await js('document.querySelectorAll("#sheet-grid .tile")[5].click()');
+assert.deepEqual(await js('[document.getElementById("sheet").hidden,document.querySelector("#kit").value,document.querySelector("#kit + .pick").textContent.startsWith("DUB CHAMBER")]'),[true,"5",true]);
+await js('document.getElementById("drum-pick").click()');
+await call("Input.dispatchKeyEvent",{type:"keyDown",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
+assert.equal(await js('document.getElementById("sheet").hidden'),true);
+await js('document.querySelector("#recipe-seg button:nth-child(2)").click()');
+assert.equal(await js('document.querySelector("#recipe").value'),"1");
+console.log("Kit and pattern library, musical hotkeys and custom-kit marking, tile pickers and preset buttons passed");
 // Views are display only: switching through all five keeps playback, the playing bank and tails.
 await js('document.querySelector("#play").click()');
 for(let i=0;i<30&&await js('document.querySelector("#status").textContent')!=="Playing";i++)await wait(50);

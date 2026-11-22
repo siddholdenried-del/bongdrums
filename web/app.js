@@ -60,7 +60,7 @@ const saveUI=()=>{try{localStorage.setItem(uiKey,JSON.stringify(ui));}catch{}};
 
 let state,ctx,port,module,connecting,playing=false,recording=false,selected=1,active=-1,focus=[0,0],stepAt=0,lfoShown=0;
 let playingBank=0,queuedBank=-1,lfoPhase=[0,0];
-const lanes=[],number=[],buttons=[],chips=[],muteButtons=[],strips=[];
+const lanes=[],number=[],buttons=[],muteButtons=[],strips=[];
 const rows=()=>state.banks[state.editBank];
 const send=(kind,value)=>port?.postMessage({kind,...value});
 const info=$("status"),grid=$("score");
@@ -114,6 +114,30 @@ function fitKnobs(box){
 }
 function fitCentre(box){const w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;box.style.setProperty("--dial",Math.round(Math.max(46,Math.min(170,(h-40)/1.6,w*.17)))+"px");}
 const fitter=new ResizeObserver(es=>es.forEach(e=>e.target.classList.contains("lfo-centre")?fitCentre(e.target):fitKnobs(e.target)));
+/* Tile sheet: one big grid of choices instead of a native dropdown. */
+let sheetReturn=null;
+function openSheet(title,items,current,onPick,cols,from){
+  const sheet=$("sheet"),grid=$("sheet-grid");$("sheet-title").textContent=title;
+  grid.style.setProperty("--cols",cols);grid.replaceChildren();
+  let first=null;
+  for(const it of items){
+    const b=make("button",null,{type:"button",class:"tile","aria-pressed":String(String(it.value)===String(current))});
+    b.append(make("b",it.label));if(it.sub)b.append(make("small",it.sub));
+    b.onclick=()=>{closeSheet();onPick(it.value);};grid.append(b);
+    if(String(it.value)===String(current)||!first)first=String(it.value)===String(current)?b:first||b;
+  }
+  sheetReturn=from;sheet.hidden=false;(grid.querySelector("[aria-pressed=true]")||first)?.focus({preventScroll:true});
+}
+function closeSheet(){const s=$("sheet");if(s.hidden)return;s.hidden=true;sheetReturn?.focus({preventScroll:true});sheetReturn=null;}
+/* Picker: hides a native select and shows a button that opens the tile sheet. The select stays the source of truth. */
+function pickerFor(sel,{title,cols=3,label=o=>o.text,sub=()=>"",cls=""}){
+  sel.classList.add("sr");sel.tabIndex=-1;sel.setAttribute("aria-hidden","true");
+  const b=make("button",null,{type:"button",class:"pick "+cls,"aria-haspopup":"dialog"});sel.after(b);
+  const sync=()=>{const o=sel.selectedOptions[0];b.replaceChildren(make("span",o?label(o):"—"),make("i","▾",{"aria-hidden":"true"}));b.disabled=sel.disabled;b.setAttribute("aria-label",title+": "+(o?o.text:"none"));};
+  b.onclick=()=>openSheet(title,[...sel.options].filter(o=>!o.hidden&&!o.disabled).map(o=>({value:o.value,label:label(o),sub:sub(o)})),sel.value,v=>{sel.value=v;sel.dispatchEvent(new Event("change",{bubbles:true}));sync();},cols,b);
+  sel.addEventListener("change",sync);new MutationObserver(sync).observe(sel,{childList:true,subtree:true,attributes:true});
+  sel.sync=sync;sync();return b;
+}
 /* chunky segmented buttons */
 function segment(host,labels,value,onPick,{label="",cls=""}={}){
   host.replaceChildren();host.className="seg "+cls;host.setAttribute("role","group");if(label)host.setAttribute("aria-label",label);
@@ -127,8 +151,8 @@ const returnText=v=>v===0?"OFF":(20*Math.log10(.8*v/85)).toFixed(1)+" dB";
 
 /* ---------- kit / pattern library ---------- */
 function markCustom(){if(state.kit!==-1){state.kit=-1;viewKit();}}
-function viewKit(){const s=$("kit");s.querySelector("option[value='-1']").hidden=state.kit!==-1;s.value=String(state.kit);}
-function viewGroove(){const s=$("groove"),v=state.loaded[state.editBank];s.querySelector("option[value='-1']").hidden=v!==-1;s.value=String(v);}
+function viewKit(){const s=$("kit");s.querySelector("option[value='-1']").hidden=state.kit!==-1;s.value=String(state.kit);s.sync?.();}
+function viewGroove(){const s=$("groove"),v=state.loaded[state.editBank];s.querySelector("option[value='-1']").hidden=v!==-1;s.value=String(v);s.sync?.();}
 function applyKit(i){
   const k=kits[i];
   for(let p=1;p<=11;p++){
@@ -235,14 +259,14 @@ function gridBuild(){
 }
 
 /* ---------- drum view ---------- */
-function recipeSelection(p){const v=patchStore.bd_match(p),s=$("recipe");s.querySelector("option[value='-1']").hidden=v!==-1;s.value=String(v);}
+function recipeSelection(p){const v=patchStore.bd_match(p),s=$("recipe");s.querySelector("option[value='-1']").hidden=v!==-1;s.value=String(v);$("recipe-seg").set?.(v);$("custom-tag").classList.toggle("on",v===-1);}
 function tickDisplay(p,k,v){const d=patchStore.bd_decimals(p,k),unit=fromPtr(patchStore.bd_unit(p,k));return (v/(10**d)).toFixed(d)+(unit?" "+unit:"");}
 function selectVoice(p){
   selected=p;$("sound-heading").textContent=String(p).padStart(2,"0")+" "+names[p-1].toUpperCase();
   lanes.forEach((e,i)=>e.classList.toggle("sel",i===p-1));
-  chips.forEach((e,i)=>e.setAttribute("aria-pressed",String(i===p-1)));
   const r=$("recipe");r.replaceChildren(make("option","CUSTOM",{value:-1,disabled:""}));
-  for(let n=0;n<patchStore.bd_recipe_count(p);n++)r.append(make("option",fromPtr(patchStore.bd_recipe_name(p,n)).toUpperCase(),{value:n}));
+  const recipes=[];for(let n=0;n<patchStore.bd_recipe_count(p);n++){const name=fromPtr(patchStore.bd_recipe_name(p,n)).toUpperCase();recipes.push(name);r.append(make("option",name,{value:n}));}
+  segment($("recipe-seg"),recipes,patchStore.bd_match(p),n=>{r.value=String(n);r.dispatchEvent(new Event("change"));},{label:"Preset",cls:"presets"});
   recipeSelection(p);buildParams();
 }
 function buildParams(){
@@ -318,18 +342,24 @@ function buildLFOs(){
     const route=make("div",null,{class:"lfo-route"});
     const drum=make("select",null,{id:"lfo-"+i+"-lane"});["OFF",...short].forEach((n,j)=>drum.append(make("option",n,{value:j})));drum.value=spec.lane;
     const target=make("select",null,{id:"lfo-"+i+"-param"});
-    const fill=()=>{
+    let fill=()=>{
       target.replaceChildren(make("option","LEVEL",{value:0}));
       if(spec.lane)for(let k=0;k<patchStore.bd_params(spec.lane);k++){if(patchStore.bd_option(spec.lane,k,patchStore.bd_min(spec.lane,k)))continue;target.append(make("option",fromPtr(patchStore.bd_label(spec.lane,k)).toUpperCase(),{value:k+1}));}
       target.value=String(spec.param);if(target.value!==String(spec.param)){spec.param=0;target.value="0";}target.disabled=!spec.lane;
     };
     drum.onchange=()=>{spec.lane=+drum.value;spec.param=0;fill();send("lfo",{slot:i,value:spec});persist();redraw();};
-    target.onchange=()=>update("param",+target.value);fill();
+    target.onchange=()=>update("param",+target.value);
+    target.classList.add("sr");target.tabIndex=-1;target.setAttribute("aria-hidden","true");
+    const targetSeg=make("div");
+    const fillSeg=()=>{const opts=[...target.options];segment(targetSeg,opts.map(o=>o.text),opts.findIndex(o=>o.value===target.value),j=>{target.value=opts[j].value;target.dispatchEvent(new Event("change"));},{label:"Target",cls:"targets"+(target.disabled?" off":"")});};
+    const fill0=fill;fill=()=>{fill0();fillSeg();};fill();
     const field=(title,ctl)=>{const b=make("div",null,{class:"field"});b.append(make("span",title,{class:"tag"}),ctl);return b;};
     const shape=segment(make("div"),["SINE","TRI","SQR"],spec.wave,v=>update("wave",v),{label:"Shape"});
     let reveal=()=>{};
     const clock=segment(make("div"),["FREE","SYNC"],spec.sync?1:0,v=>{update("sync",v===1);reveal();},{label:"Clock"});
-    route.append(field("DRUM",drum),field("TARGET",target),field("SHAPE",shape),field("CLOCK",clock));
+    const tf=field("TARGET",target);tf.append(targetSeg);tf.classList.add("wide");
+    route.append(field("DRUM",drum),tf,field("SHAPE",shape),field("CLOCK",clock));
+    pickerFor(drum,{title:"LFO "+(i+1)+" DRUM",cols:4,label:o=>o.text,sub:o=>+o.value?names[o.value-1].toUpperCase():"NO TARGET"});
     const scope=make("div",null,{class:"scope"});
     scope.innerHTML=`<svg viewBox="0 0 320 120" preserveAspectRatio="none" aria-hidden="true"><line class="axis" x1="0" y1="60" x2="320" y2="60"/><path class="wave"/><circle class="dot" r="5"/></svg><span class="scope-label"></span>`;
     const wave=scope.querySelector(".wave"),dot=scope.querySelector(".dot"),slabel=scope.querySelector(".scope-label");
@@ -377,6 +407,8 @@ function showView(t){
   const changed=document.body.dataset.view!==t;
   document.body.dataset.view=t;ui.view=t;saveUI();
   for(const b of document.querySelectorAll(".modes [data-tab]"))b.setAttribute("aria-selected",String(b.dataset.tab===t));
+  // Size the knobs of the view now shown at once, without waiting for a resize callback.
+  if(t==="drum")fitKnobs($("params"));else if(t==="bus")fitKnobs($("macros"));else if(t==="lfo")document.querySelectorAll(".lfo-centre").forEach(fitCentre);
   if(changed){const s=$("screen");s.classList.remove("fringe");void s.offsetWidth;s.classList.add("fringe");}
 }
 
@@ -487,7 +519,18 @@ try{
   outBar=$("out-bar");
   for(const [id,list,custom] of [["kit",kits,"CUSTOM KIT"],["groove",patterns,"EDITED PATTERN"]]){const sel=$(id);sel.append(make("option",custom,{value:-1,disabled:""}));list.forEach((x,i)=>sel.append(make("option",x.name.toUpperCase(),{value:i})));}
   gridBuild();buildMixer();buildLFOs();
-  short.forEach((s,i)=>{const b=make("button",s,{type:"button",title:names[i],"aria-label":"Edit "+names[i],"aria-pressed":"false"});b.onclick=()=>selectVoice(i+1);chips.push(b);$("voice-tabs").append(b);});
+  pickerFor($("kit"),{title:"KIT",cols:3,cls:"wide"});
+  pickerFor($("groove"),{title:"PATTERN · LOADS INTO THE EDIT BANK",cols:4,cls:"wide",sub:o=>{const p=patterns[+o.value];return p&&p.bpm?p.bpm+" BPM · SWING "+p.swing+"%":""}});
+  $("drum-pick").onclick=()=>openSheet("DRUM",names.map((n,i)=>({value:i+1,label:String(i+1).padStart(2,"0")+" "+short[i],sub:n.toUpperCase()})),selected,v=>selectVoice(+v),4,$("drum-pick"));
+  $("sheet-close").onclick=closeSheet;
+  $("sheet").addEventListener("pointerdown",e=>{if(e.target.id==="sheet")closeSheet();});
+  $("sheet").addEventListener("keydown",e=>{
+    if(e.key==="Escape"){e.preventDefault();closeSheet();return;}
+    const tiles=[...$("sheet-grid").children],i=tiles.indexOf(document.activeElement);if(i<0)return;
+    const cols=getComputedStyle($("sheet-grid")).gridTemplateColumns.split(" ").length;
+    const d={ArrowRight:1,ArrowLeft:-1,ArrowDown:cols,ArrowUp:-cols}[e.key];
+    if(d){e.preventDefault();tiles[Math.max(0,Math.min(tiles.length-1,i+d))].focus();}
+  });
   swingKnob=knob({id:"swing",label:"Swing",min:50,max:75,value:state.swing,def:50,fmt:pct,onInput:v=>{state.swing=v;send("swing",{value:v});persist();},cls:"inline"});
   $("swing-slot").append(swingKnob);
   ["Saturator","Compressor","Transient","Limiter"].forEach((name,i)=>{
@@ -529,7 +572,7 @@ try{
   playingBank=state.playBank;chooseBank(state.editBank);
   document.addEventListener("pointerdown",e=>{const m=$("menu");if(m.open&&!m.contains(e.target))m.open=false;});
   document.addEventListener("keydown",e=>{
-    if(e.metaKey||e.altKey||e.ctrlKey)return;
+    if(e.metaKey||e.altKey||e.ctrlKey||!$("sheet").hidden)return;
     const t=e.target;
     if(t.closest?.("select,textarea,[contenteditable]")||(t.tagName==="INPUT"&&t.type!=="range"&&t.type!=="checkbox"))return;
     if(e.key==="Escape"){$("menu").open=false;return;}
