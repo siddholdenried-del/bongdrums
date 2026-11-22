@@ -144,6 +144,9 @@ for(const [w,h] of [[320,568],[390,844],[1280,720],[1440,900]]){
   await js(`document.querySelector('.modes [data-tab=${v}]').click()`);
   const o=await js('({sh:document.documentElement.scrollHeight,h:innerHeight,sw:document.documentElement.scrollWidth,w:innerWidth})');
   assert.ok(o.sh<=o.h&&o.sw<=o.w,`${v} scrolls at ${w}x${h}`);
+  // Nothing visible may be clipped off the right edge (overflow is hidden, so scroll checks can't see it).
+  const clipped=await js(`[...document.querySelectorAll(".app *")].filter(e=>e.offsetParent&&e.getClientRects().length&&!e.closest(".menu-body")).map(e=>[e,e.getBoundingClientRect()]).filter(([e,r])=>r.width>0&&r.right>innerWidth+1).map(([e,r])=>(e.id||e.className||e.tagName)+"@"+Math.round(r.right)).slice(0,5)`);
+  assert.deepEqual(clipped,[],`${v} clips at ${w}x${h}`);
  }
  await call("Emulation.setDeviceMetricsOverride",{width:w,height:h,deviceScaleFactor:1,mobile:w<760});await wait(250);
  const p=await js('({w:innerWidth,h:innerHeight,sw:document.documentElement.scrollWidth,sh:document.documentElement.scrollHeight,steps:[...document.querySelectorAll(".step")].filter(s=>s.offsetParent).length})');
@@ -151,6 +154,6 @@ for(const [w,h] of [[320,568],[390,844],[1280,720],[1440,900]]){
  assert.equal(p.steps,176,"all 16 steps of all 11 drums on one screen at "+w);
  const s=await call("Page.captureScreenshot",{format:"png"});await writeFile(`BongDrums-${w}.png`,Buffer.from(s.data,"base64"));
 }
-console.log("No page scroll at 320x568, 390x844, 1280x720 and 1440x900; all 176 steps on one screen at every size");
+console.log("No page scroll or clipped content in any view at 320x568, 390x844, 1280x720 and 1440x900; all 176 steps on one screen at every size");
 ws.close();
 }finally{proc.kill();}

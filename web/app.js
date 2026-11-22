@@ -110,7 +110,7 @@ function fitKnobs(box){
   const cs=getComputedStyle(box),gx=parseFloat(cs.columnGap)||16,gy=parseFloat(cs.rowGap)||12,extra=ks.some(k=>k.querySelector(".gr"))?18:0;
   let best=0,cols=n;
   for(let r=1;r<=n;r++){const c=Math.ceil(n/r);const size=Math.min((w-(c-1)*gx)/c/1.12,((h-(r-1)*gy)/r-extra-16)/1.62);if(size>best){best=size;cols=c;}}
-  box.style.setProperty("--dial",Math.round(Math.max(38,Math.min(200,best)))+"px");box.style.gridTemplateColumns=`repeat(${cols},auto)`;
+  box.style.setProperty("--dial",Math.round(Math.max(38,Math.min(200,best)))+"px");box.style.gridTemplateColumns=`repeat(${cols},minmax(0,max-content))`;
 }
 function fitCentre(box){const w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;box.style.setProperty("--dial",Math.round(Math.max(46,Math.min(170,(h-40)/1.6,w*.17)))+"px");}
 const fitter=new ResizeObserver(es=>es.forEach(e=>e.target.classList.contains("lfo-centre")?fitCentre(e.target):fitKnobs(e.target)));
