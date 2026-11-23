@@ -1,6 +1,5 @@
 app/dsp/drum909_dsp.h
 app/dsp/fastmath.h
-app/dsp/fxbus.c
 app/dsp/fxbus.h
 app/dsp/gm_ram.h
 app/dsp/x0x_param.h

@@ -15,8 +15,6 @@ export function apply(x,s){
     for(const [k,v] of s.voices[p-1].edits)x.bd_set(p,k,v);
     x.bd_mute(p,s.mutes[p-1]?1:0);
     x.bd_level(p,s.levels?.[p-1]??100);
-    if(s.sends)for(let w=0;w<2;w++)x.bd_send(p,w,s.sends[p-1][w]);
-    if(p<=2&&s.returns)x.bd_return(p-1,s.returns[p-1]);
     if(s.pans)x.bd_pan(p,s.pans[p-1]);
     for(let b=0;b<2;b++)for(let n=0;n<16;n++)x.bd_bank_cell(b,p,n,s.banks[b][p-1][n]);
   }

@@ -7,7 +7,7 @@ const base=boot(new WebAssembly.Module(execFileSync("git",["show","68fa6fd:web/b
 const lane=new Float32Array(x.memory.buffer,x.bd_lane_peaks(),11);
 const block=(e,p)=>new Float32Array(e.memory.buffer,p?e.bd_right():e.bd_left(),128);
 for(const wet of [0,1]){
-  for(const e of [x,base]){e.bd_init();e.bd_dry(!wet);e.bd_start();}
+  for(const e of [x,base]){e.bd_init();e.bd_dry(!wet);for(let p=1;p<=11;p++)for(let i=0;i<2;i++)e.bd_send(p,i,0);e.bd_start();}
   for(let i=0;i<720;i++){
     if(i===360)x.bd_meter_lanes(1);
     x.bd_render(128);base.bd_render(128);
@@ -28,4 +28,4 @@ for(let p=1;p<=11;p++)assert.ok(peak(p)>.001);
 const full=peak(1);assert.ok(Math.abs(peak(1,50)/full-.25)<1e-6);
 assert.ok(peak(1,100,100)>0);assert.equal(peak(1,0),0);assert.equal(peak(1,100,0,true),0);
 x.bd_clear_lane_peaks();assert.ok(lane.every(v=>v===0));
-console.log("11 true lane peaks; level, pan, mute, read/reset; WASM output byte-exact versus release in Dry and Bus");
+console.log("11 true lane peaks; level, pan, mute, read/reset; WASM output byte-exact versus release with spatial sends disabled");

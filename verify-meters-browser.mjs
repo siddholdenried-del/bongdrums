@@ -22,6 +22,7 @@ await call("Page.addScriptToEvaluateOnNewDocument",{source:`const AC=AudioContex
 await call("Page.navigate",{url:"http://127.0.0.1:48627/"});for(let i=0;i<100&&await js('document.querySelectorAll(".lane-meter").length')!==11;i++)await wait(200);
 await js(`document.querySelector('[data-tab=mixer]').click()`);
 assert.equal(await js('document.querySelectorAll(".lane-meter").length'),11);
+assert.equal(await js('document.querySelectorAll("#returns,[id^=mix-send-]").length'),0);
 const codes=["KeyA","KeyS","KeyD","KeyE","KeyR","KeyT","KeyJ","KeyK","KeyL","KeyU","KeyI"];
 const peaks=await js(`new Array(11).fill(-60)`);
 for(const code of codes){
@@ -37,5 +38,17 @@ await js(`document.querySelector('#bench').click()`);assert.match(await js('docu
 await js(`document.querySelector('#play').click();document.querySelector('#bench').click();`);
 for(let i=0;i<150&&!((await js('document.querySelector("#dsp-load").value')).includes("OFFLINE"));i++)await wait(120);
 console.log("bench",await js('document.querySelector("#dsp-load").value'));assert.match(await js('document.querySelector("#dsp-load").value'),/^[0-9.]+% OF BUDGET · OFFLINE$/);
+
+await js(`document.querySelector('#play').click()`);
+for(let i=0;i<40&&await js('document.querySelector("#play").getAttribute("aria-pressed")!=="true"');i++)await wait(50);
+assert.equal(await js('document.querySelector("#play").getAttribute("aria-pressed")'),"true");
+await js(`document.querySelector('#play').click()`);
+await js(`document.querySelector("#mixer button.strip-name").click()`);
+
+const file={kind:"BongDrums Drum Preset",version:1,voice:"kick",recipe:0,edits:[[0,620]]};
+await js(`(()=>{const f=new DataTransfer();f.items.add(new File([${JSON.stringify(JSON.stringify(file))}],"old-bongdrums.txt",{type:"text/plain"}));document.querySelector('#preset-drop').dispatchEvent(new DragEvent('drop',{dataTransfer:f}));})()`);
+for(let i=0;i<30&&await js('document.querySelector("#preset-apply").disabled');i++)await wait(60);
+await js(`document.querySelector('#preset-apply').click()`);
+assert.match(await js('document.querySelector("#preset-notice").textContent'),/Imported/);
 assert.deepEqual(errors,[]);ws.close();
 }finally{proc.kill();}

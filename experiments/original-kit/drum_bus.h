@@ -21,6 +21,7 @@ typedef struct {
 
 /* Keep at a stable address: the stock delay holds a pointer to delay_line. */
 typedef struct {
+#ifndef DRUM_BUS_NO_SPATIAL
     fxbus_t returns;
     int16_t delay_line[BUS_DELAY_SAMPLES];
     float send[2][BUS_FRAMES];
@@ -29,6 +30,7 @@ typedef struct {
     float send_hp_a[BUS_PADS], send_lp_b[BUS_PADS];
     float send_x[BUS_PADS], send_hp[BUS_PADS], send_lp[BUS_PADS];
     int returns_live;
+#endif
     float comp_env, fast_env, slow_env, limiter_reduction;
     /* Positive maximum reduction in the most recently processed span, dB.
        Read on the render thread or publish a synchronized UI copy. */

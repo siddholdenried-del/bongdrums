@@ -38,6 +38,7 @@ BusMix bus_default_mix(void)
 void drum_bus_init(DrumBus *b)
 {
     memset(b, 0, sizeof *b);
+#ifndef DRUM_BUS_NO_SPATIAL
     fxbus_init(&b->returns, b->delay_line, BUS_DELAY_SAMPLES);
     /* Send voicing, Hz. Kick and toms keep their low end out of the room;
        hats and cymbal lose fizz before the delay repeats it. */
@@ -55,16 +56,21 @@ void drum_bus_init(DrumBus *b)
     fxbus_set(&b->returns, FX_DL_WIDTH, 0);
     fxbus_set(&b->returns, FX_DL_TIME, 5); /* eighth note */
     b->returns.dcur = b->returns.dl_time_ms * (.001f * KIT_RATE);
+#endif
 }
 
 void drum_bus_tempo(DrumBus *b, float bpm)
 {
+#ifdef DRUM_BUS_NO_SPATIAL
+    (void)b; (void)bpm;
+#else
     if (isfinite(bpm) && bpm >= 30 && bpm <= 300) {
         fxbus_set_bpm(&b->returns, bpm);
         /* No echo in flight on an idle line, so start the first echo right on time. */
         if (b->returns.dl_quiet >= b->returns.dlen)
             b->returns.dcur = b->returns.dl_time_ms * (.001f * KIT_RATE);
     }
+#endif
 }
 
 static void balance(float pan, float level, float *l, float *r)
@@ -153,23 +159,28 @@ static void transients(DrumBus *b, const BusPatch *p, float *l, float *r, unsign
     b->slow_env = slow>1.e-14f ? slow : 0.f;
 }
 
+#ifndef DRUM_BUS_NO_SPATIAL
 static int tails_live(const fxbus_t *f)
 {
     return f->dl_quiet < f->dlen || f->room.quiet < FX_RM_QUIET ||
            f->room.rh_yl != 0 || f->room.rh_yr != 0;
 }
 
+#endif
+
 static float render_block(DrumBus *b, const BusMix *m, float *lanes[BUS_PADS],
                          unsigned offset, float *l, float *r, unsigned n)
 {
     memset(l, 0, n * sizeof *l);
     memset(r, 0, n * sizeof *r);
+#ifndef DRUM_BUS_NO_SPATIAL
     float *rev = b->send[0], *dly = b->send[1];
     memset(rev, 0, n * sizeof *rev);
     memset(dly, 0, n * sizeof *dly);
     float master_rv = m->dry_only ? 0 : kit_unit(m->bus.reverb_send);
     float master_dl = m->dry_only ? 0 : kit_unit(m->bus.delay_send);
     int send_lane = 0;
+#endif
     for (unsigned p = 0; p < BUS_PADS; ++p) {
         if (!lanes[p]) continue;
         const BusPad *v = &m->pad[p];
@@ -189,6 +200,11 @@ static float render_block(DrumBus *b, const BusMix *m, float *lanes[BUS_PADS],
             if (peak > b->lane_peaks[p]) b->lane_peaks[p] = peak;
         }
 #endif
+#ifdef DRUM_BUS_NO_SPATIAL
+        for (unsigned i = 0; i < n; ++i) {
+            l[i] += lg*src[i]; r[i] += rg*src[i];
+        }
+#else
         float rv = level * master_rv * kit_unit(v->reverb);
         float dl = level * master_dl * kit_unit(v->delay);
         if (rv != 0 || dl != 0) {
@@ -209,7 +225,9 @@ static float render_block(DrumBus *b, const BusMix *m, float *lanes[BUS_PADS],
                 l[i] += lg*src[i]; r[i] += rg*src[i];
             }
         }
+#endif
     }
+#ifndef DRUM_BUS_NO_SPATIAL
     int incoming = 0;
     if (!m->dry_only && send_lane &&
         (!b->returns_live || b->returns.room.quiet >= FX_RM_QUIET)) {
@@ -237,6 +255,7 @@ static float render_block(DrumBus *b, const BusMix *m, float *lanes[BUS_PADS],
         }
         b->returns_live = tails_live(&b->returns);
     }
+#endif
     float lg, rg;
     balance(m->bus.pan,m->bus.level,&lg,&rg);
     for (unsigned i = 0; i < n; ++i) {

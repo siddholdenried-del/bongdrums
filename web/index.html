@@ -82,8 +82,8 @@
   </section>
 
   <section class="view" data-view="mixer" role="tabpanel" aria-label="Mixer">
-    <p class="flow" aria-label="Signal flow">DRUMS <b>+</b> REVERB RETURN <b>+</b> DELAY RETURN <b>→</b> DRUM BUS <b>→</b> OUTPUT</p>
-    <div class="mixer"><div class="strips" id="mixer"></div><div class="returns" id="returns" role="group" aria-label="Returns"></div></div>
+    <p class="flow" aria-label="Signal flow">DRUMS <b>→</b> MIXER <b>→</b> DRUM BUS <b>→</b> OUTPUT</p>
+    <div class="mixer"><div class="strips" id="mixer"></div></div>
   </section>
 
   <section class="view" data-view="bus" role="tabpanel" aria-label="Drum bus">
@@ -92,7 +92,7 @@
     <div class="knobs big" id="macros"></div>
     <div class="meters"><span>OUT</span><span class="meter"><i id="out-bar"></i></span></div>
 
-    <p class="hint">BUS SUMS THE DRUMS WITH THE REVERB AND DELAY RETURNS, THEN SATURATOR → COMPRESSOR → TRANSIENT → LIMITER. DRY HEARS THE DRUMS ONLY.</p>
+    <p class="hint">BUS: SATURATOR → COMPRESSOR → TRANSIENT → LIMITER. DRY BYPASSES THE DRUM BUS.</p>
   </section>
 </main>
 <footer class="brand-foot"><img class="bongsoft-mark" src="art/bongsoft-logo-cutout.webp" width="640" height="150" alt="BongSoft"></footer>

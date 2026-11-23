@@ -19,8 +19,6 @@ class BongDrums extends AudioWorkletProcessor{
         case "lfo": lfo(x,d.slot,d.value);break;
         case "mute": x.bd_mute(d.pad,d.value);break;
         case "level": x.bd_level(d.pad,d.value);break;
-        case "send": x.bd_send(d.pad,d.which,d.value);break;
-        case "return": x.bd_return(d.which,d.value);break;
         case "pan": x.bd_pan(d.pad,d.value);break;
         case "tempo": x.bd_tempo(d.value);break;
         case "recipe": x.bd_recipe(d.pad,d.value);break;

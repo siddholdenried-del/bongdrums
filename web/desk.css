@@ -393,3 +393,7 @@ body.fx-off .plot-trace::after,body.fx-off .scope::after,body.fx-off .bus-scope:
  .lane-meter{top:auto;bottom:1px;left:calc(var(--u)*24);right:calc(var(--u)*76);width:auto;height:calc(var(--u)*2)}
  .lane-meter > i{transform-origin:left;transform:scaleX(var(--lane-level,0))}
 }
+
+/* Drum strips only: the mixer no longer allocates space to spatial returns. */
+.mixer{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+@media(max-width:640px){.lane-meter{right:calc(var(--u)*43)}}

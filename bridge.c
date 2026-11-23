@@ -19,11 +19,23 @@ void bd_lfo_param(int slot,int param){station_lfo_param(&s,slot,param);}
 /* Pad level 0..100, squared to gain so the travel feels even. */
 void bd_level(int p,int v){if(v>=0&&v<=100)station_level(&s,p,(float)(v*v)/10000.0f);}
 /* Send 0..100 into the shared ROOM (0) or DIGI (1); read back for defaults. */
-void bd_send(int p,int which,int v){if(v>=0&&v<=100)station_send(&s,p,which,(float)v/100.0f);}
+void bd_send(int p,int which,int v){
+#ifdef DRUM_BUS_NO_SPATIAL
+(void)p;(void)which;(void)v;
+#else
+if(v>=0&&v<=100)station_send(&s,p,which,(float)v/100.0f);
+#endif
+}
 int bd_send_get(int p,int which){if(p<1||p>11||(unsigned)which>1)return 0;const BusPad *v=&s.mix.pad[p-1];return (int)((which?v->delay:v->reverb)*100.0f+.5f);}
 /* Return level 0..127 for the shared REVERB (0) or DELAY (1) output; 85 is the
    stock 0.8 gain. Applied at each return's output, so ringing tails follow it. */
-void bd_return(int which,int v){if((unsigned)which>1||v<0||v>127)return;const float g=v==85?0.8f:0.8f*(float)v/85.0f;if(which)s.bus.returns.dl_level=g;else s.bus.returns.rv_level=g;}
+void bd_return(int which,int v){
+#ifdef DRUM_BUS_NO_SPATIAL
+(void)which;(void)v;
+#else
+if((unsigned)which>1||v<0||v>127)return;const float g=v==85?0.8f:0.8f*(float)v/85.0f;if(which)s.bus.returns.dl_level=g;else s.bus.returns.rv_level=g;
+#endif
+}
 /* Pan -100 (left) .. +100 (right); 0 is centre. */
 void bd_pan(int p,int v){if(v>=-100&&v<=100)station_pan(&s,p,(float)v/100.0f);}
 int bd_lfo_phase(int slot){return (unsigned)slot<STATION_LFOS?(int)s.lfo[slot].phase:0;}

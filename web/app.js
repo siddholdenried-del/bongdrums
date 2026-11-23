@@ -172,7 +172,6 @@ function slide3(host,labels,value,onPick,{label="",cls=""}={}){
 const pct=v=>v+"%";
 const levelText=v=>v===0?"OFF":v===100?"0 dB":(40*Math.log10(v/100)).toFixed(1)+" dB";
 const panText=v=>v===0?"C":(v<0?"L":"R")+Math.abs(v);
-const returnText=v=>v===0?"OFF":(20*Math.log10(.8*v/85)).toFixed(1)+" dB";
 
 /* ---------- kit / pattern library ---------- */
 function markCustom(){if(state.kit!==-1){state.kit=-1;viewKit();}}
@@ -188,9 +187,9 @@ function applyKit(i){
     const edits=[];for(const [n,val] of vc.edits)if(patchStore.bd_set(p,n,val)){edits.push([n,val]);send("param",{pad:p,index:n,value:val});}
     state.voices[p-1]={recipe:vc.recipe,edits};
     setLevel(p,k.levels?.[p-1]??100,true);setPan(p,k.pans?.[p-1]??0,true);
-    const s=k.sends?.[p-1]??defaultSends[p-1];setSend(p,0,s[0],true);setSend(p,1,s[1],true);
+    state.sends[p-1]=[...(k.sends?.[p-1]??defaultSends[p-1])];
   }
-  (k.returns??[RETURN_DEFAULT,RETURN_DEFAULT]).forEach((v,w)=>setReturn(w,v,true));
+  state.returns=[...(k.returns??[RETURN_DEFAULT,RETURN_DEFAULT])];
   k.macros.forEach((v,n)=>setMacro(n,v,true));setDry(k.dry,true);
   state.kit=i;viewKit();selectVoice(selected);persist();
 }
@@ -204,11 +203,9 @@ function loadPattern(i){
 }
 
 /* ---------- mix setters keep every view in step ---------- */
-let macroKnobs=[],returnKnobs=[];
+let macroKnobs=[];
 function setLevel(p,v,quiet){state.levels[p-1]=v;patchStore.bd_level(p,v);send("level",{pad:p,value:v});strips[p-1]?.level.set(v);if(!quiet){markCustom();persist();}}
 function setPan(p,v,quiet){state.pans[p-1]=v;patchStore.bd_pan(p,v);send("pan",{pad:p,value:v});strips[p-1]?.pan.set(v);if(!quiet){markCustom();persist();}}
-function setSend(p,w,v,quiet){state.sends[p-1][w]=v;patchStore.bd_send(p,w,v);send("send",{pad:p,which:w,value:v});strips[p-1]?.sends[w].set(v);if(!quiet){markCustom();persist();}}
-function setReturn(w,v,quiet){state.returns[w]=v;patchStore.bd_return(w,v);send("return",{which:w,value:v});returnKnobs[w]?.set(v);if(!quiet){markCustom();persist();}}
 function setMacro(i,v,quiet){state.macros[i]=v;send("macro",{index:i,value:v});macroKnobs[i]?.set(v);if(!quiet){markCustom();persist();}}
 function setDry(d,quiet){state.dry=d;send("dry",{value:d});for(const c of document.querySelectorAll("input[name=busmode]"))c.checked=(c.value==="dry")===d;document.body.classList.toggle("is-dry",d);if(!quiet){markCustom();persist();}}
 function toggleMute(p){
@@ -424,12 +421,10 @@ function syncLaneMeters(){
 function buildMixer(){
   const area=$("mixer");
   const legend=make("div",null,{class:"strip legend","aria-hidden":"true"});
-  [["","lg-name"],["LEVEL","lg-level"],["REV","lg-k"],["DLY","lg-k"],["PAN","lg-k"],["M","lg-m"]].forEach(([t,c])=>legend.append(make("span",t,{class:c})));
+  [["","lg-name"],["LEVEL","lg-level"],["PAN","lg-k"],["M","lg-m"]].forEach(([t,c])=>legend.append(make("span",t,{class:c})));
   area.append(legend);
   for(let p=1;p<=11;p++){
     const strip=make("div",null,{class:"strip"}),id="mix-level-"+p;
-    const sends=[0,1].map(w=>knob({id:"mix-send-"+w+"-"+p,label:w?"DLY":"REV",min:0,max:100,value:state.sends[p-1][w],def:defaultSends[p-1][w],fmt:pct,onInput:v=>setSend(p,w,v),cls:"mini"}));
-    sends[0].title=names[p-1]+" reverb send";sends[1].title=names[p-1]+" delay send";
     const fader=make("input",null,{type:"range",id,min:0,max:100,step:1,class:"fader","aria-label":names[p-1]+" level"});fader.value=state.levels[p-1];
     const read=make("output",levelText(state.levels[p-1]),{for:id,class:"read"});
     fader.oninput=()=>{read.value=levelText(+fader.value);setLevel(p,+fader.value);};
@@ -438,22 +433,12 @@ function buildMixer(){
     const name=make("button",short[p-1],{type:"button",class:"strip-name",title:names[p-1],"aria-label":"Edit "+names[p-1]});name.onclick=()=>{selectVoice(p);showView("drum");};
     const pan=knob({id:"mix-pan-"+p,label:"PAN",min:-100,max:100,value:state.pans[p-1],def:0,fmt:panText,onInput:v=>setPan(p,v),cls:"mini pan"});
     pan.title=names[p-1]+" pan";
-    const meter=make("span",null,{class:"lane-meter",role:"meter","aria-label":names[p-1]+" audio peak","aria-valuemin":-60,"aria-valuemax":0,"aria-valuenow":-60,"aria-valuetext":"Silent",title:names[p-1]+" audio peak after level, pan and mute, before shared effects"});
+    const meter=make("span",null,{class:"lane-meter",role:"meter","aria-label":names[p-1]+" audio peak","aria-valuemin":-60,"aria-valuemax":0,"aria-valuenow":-60,"aria-valuetext":"Silent",title:names[p-1]+" audio peak after level, pan and mute, before the drum bus"});
     const fill=make("i");meter.append(fill);
-    strip.append(name,sends[0],sends[1],pan,fader,meter,read,mute);area.append(strip);
-    strips[p-1]={level,sends,mute,pan,meter,fill,peak:0};
+    strip.append(name,pan,fader,meter,read,mute);area.append(strip);
+    strips[p-1]={level,mute,pan,meter,fill,peak:0};
   }
-  // The two returns are faders too, set apart on their own panel.
-  const ret=$("returns");
-  returnKnobs=[["REV","REVERB RETURN"],["DLY","DELAY RETURN"]].map(([tag,label],w)=>{
-    const strip=make("div",null,{class:"strip return"}),id="return-"+w;
-    const fader=make("input",null,{type:"range",id,min:0,max:127,step:1,class:"fader","aria-label":label});fader.value=state.returns[w];
-    const read=make("output",returnText(state.returns[w]),{for:id,class:"read"});
-    fader.oninput=()=>{read.value=returnText(+fader.value);setReturn(w,+fader.value);};
-    fader.addEventListener("dblclick",()=>{fader.value=RETURN_DEFAULT;fader.dispatchEvent(new Event("input"));});
-    strip.append(make("span",tag,{class:"strip-name",title:label}),make("span","RETURN",{class:"ret-tag"}),fader,read);ret.append(strip);
-    return {set:v=>{fader.value=v;read.value=returnText(v);}};
-  });
+
 }
 
 /* ---------- pixel displays: one canvas pixel per VHS block ---------- */

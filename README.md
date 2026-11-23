@@ -12,7 +12,7 @@ The instrument fits one window with no page scrolling and shows one editor at a 
 - **DRUM:** the plot is the main panel. A thin readout above the trace shows the touched setting and its value, the preset and a hit light. The trace shows the live output, plus a graph of the touched setting (envelope, pitch, saturation, filter or option steps). Below it, one large ◀ PAGE ▶ pair steps through named pages: FILTER (Tone, Drive) on every drum, plus BODY, TRANSIENT, WIRES, METAL, OSC or SWEEP as fits the voice. The knobs are a compact strip under the plot, bottom-aligned so labels don't move the dials. The header holds a compact voice picker, **P** (presets) and AUDITION.
 - **P** on SEQUENCE opens the factory kits. Pattern and the LFO drum use the same picker: a button that opens a sheet of large tiles (Escape or ✕ closes it). The LFO target is a row of buttons: LEVEL plus that drum's sliders.
 - **LFO:** LFO 1 or LFO 2, with the live waveform, rate and depth in the centre. The read point stays fixed in the middle and the waveform scrolls through it, so the dot shows the value the LFO is applying right now. Drum, target, shape and sync/free sit around them.
-- **MIXER:** per-drum level, pan, mute, and REVERB and DELAY sends. On phones each drum is one row with a horizontal level slider. The REVERB RETURN and DELAY RETURN faders sit on their own panel. Signal flow: DRUMS + REVERB RETURN + DELAY RETURN → DRUM BUS → OUTPUT. Both returns sum in before the bus processors.
+- **MIXER:** per-drum fader, pan, mute, and signal peak. The mixer feeds the drum bus directly, with no spatial effects.
 - **BUS:** a live output oscilloscope above Saturator, Compressor, Transient and Limiter, with gain-reduction meters under Compressor and Limiter.
 - Editor knobs are sized from the space each view actually has, choosing the row layout that gives the largest knobs.
 - **VHS:** a static screen overlay adds faint scanlines and subtle colour bleed at the edges without blurring or moving the controls. Plots retain their native pixel-art canvas. FX OFF removes the overlay, plot scanlines and phosphor trails.
@@ -21,7 +21,7 @@ The instrument fits one window with no page scrolling and shows one editor at a 
 - **Patterns:** 16 factory patterns with their own tempo and swing. Loading writes into the bank you are editing (A or B).
 - **Play it:** keys sound on press, and **Shift** plays an accent. Click a lane name to audition it. Lanes light when the sequencer hits them. **Rec** writes what you play into the playing bank, rounded to the nearest step. Drag across steps to paint them.
 - **Keys, laid out musically:** left hand **A S D** = kick, snare, clap; toms climb above it on **E R T** (low → high); right hand **J K L** = closed hat, open hat, cymbal; percussion above it on **U I**. **1–9 0 -** also play the drums in order. **Space** plays/stops, **Enter** toggles Rec.
-- **Sound:** 57 factory sounds with per-voice knobs. Each drum has its own level and pan, plus REVERB and DELAY sends into one shared reverb and one shared delay, each with its own return level. Each send is filtered for its drum type before it joins them, and sends sound in Bus mode only. Each LFO picks a drum, then that drum's level (continuous) or one of its sliders (sampled at every hit).
+- **Sound:** 57 factory sounds with per-voice voicing knobs. The browser build has no Color processing, reverb or delay. Tone and Drive remain part of the individual drum voices.
 - Knobs: drag up/down (Shift for fine), use the mouse wheel or arrow keys, double-click to reset. State saves in the browser only. The output meter shows peak, and the GR readouts show compressor and limiter gain reduction. The listening output has a fixed −6 dB safety trim.
 
 The AudioWorklet runs the original V6 procedural drums at a fixed 44.1 kHz; it will not substitute browser oscillators or samples if a device cannot provide the rate. Serve via HTTPS away from localhost. Do not use file://.
@@ -46,7 +46,7 @@ The code is GNU GPL v3 only (GPL-3.0-only). See [LICENSE](LICENSE) and [NOTICES.
 
 - **A/B:** choose a bank to edit without interrupting playback. Select **Queue** to change the sounding bank on the next downbeat, or **Set live** to select it immediately while stopped. If you stop with a bank queued, it becomes the next start bank. Existing saved patterns migrate to A and B starts blank. Loading a factory groove writes to the edit bank only.
 - **Swing:** 50% is straight; at higher values the even-numbered steps arrive later without moving the quarter-note or bar boundaries. A live change takes effect at the next pair of steps.
-- **Mute:** gate each lane’s audio and sends with a 64-sample ramp, not its triggers. Unmute reveals still-playing audio without retriggering a voice. Existing shared delay and reverb tails ring naturally.
+- **Mute:** gate each lane’s audio with a 64-sample ramp, not its triggers. Unmute reveals still-playing audio without retriggering a voice.
 - **LFOs:** two independent sine, triangle or soft-square modulators for pad level. Depth defaults to zero and does not edit patches. Tempo sync follows the musical quarter rather than swung step boundaries and resets at Play; free mode runs on the audio clock. Changes are smoothed and both slots can target one lane.
 - **Share .txt:** a Pattern file stores both banks, tempo and swing. A Drum Preset file stores one pad’s recipe and edits, valid on the matching pad. Pick or drop a file, then select **Apply**. Pattern imports require stopped playback. Files are read locally and never uploaded.
 - Further verification: `node verify-performance.mjs` compares against the public `v0.1.0` tag and exercises phase, mute and file round trips; `./verify-core.sh` verifies exact event boundaries, bank switching and native/WASM parity.
@@ -54,9 +54,8 @@ The code is GNU GPL v3 only (GPL-3.0-only). See [LICENSE](LICENSE) and [NOTICES.
 ### Mixer levels and DSP Bench
 
 The eleven Mixer bars show per-drum sample peaks in dBFS after voice shaping,
-LFO, mute, fader, and pan, before the shared reverb, delay, and drum-bus
-processing. They aren't fader positions. Levels drop clear on mute; shared
-returns may still ring. Collection runs only while the Mixer is visible.
+LFO, mute, fader, and pan, before drum-bus processing. They aren't fader
+positions. Levels clear on mute. Collection runs only while the Mixer is visible.
 
 From the menu, open **DSP Bench → Run Bench** with playback stopped. The
 benchmark runs the current live bank, tempo, voices, mixer and Dry/Bus settings
@@ -64,3 +63,5 @@ through the same WASM engine in a worker with metering off. It warms up, then
 reports the median of three render passes as a fraction of the audio time
 rendered. This is an offline browser throughput estimate. It does not measure
 AudioWorklet deadlines, audio device latency, dropouts, or FM-1 CPU load.
+
+Saved kit send and return fields are retained as inactive legacy data. Browser builds exclude the spatial engine and buffers. The optional drum bus keeps saturation, compression, transient shaping, and limiting.

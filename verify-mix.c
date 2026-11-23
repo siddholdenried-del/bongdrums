@@ -23,7 +23,7 @@ int main(void){
   bd_init();bd_dry(0);bd_send(2,0,100);bd_send(2,1,100);
   bd_hit(2,0);for(int i=0;i<22050/128;i++)bd_render(128);double wet_tail=energy(0,22050);
   printf("Snare tail 0.5-1.0 s after hit: sends 0 = %g, sends 100 = %.4f\n",dry_tail,wet_tail);
-  assert(wet_tail>dry_tail*100&&wet_tail>1e-6);
+  assert(wet_tail==dry_tail); /* legacy send writes are inert */
   /* LFO slider target: per-hit values vary, level target untouched. */
   int k=-1;for(int i=0;i<bd_params(1);i++)if(!kit_param_option(1,i,bd_min(1,i))&&bd_max(1,i)>bd_min(1,i)){k=i;break;}
   assert(k>=0);
