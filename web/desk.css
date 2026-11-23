@@ -394,3 +394,13 @@ body.fx-off .screen.fringe::after{display:none}
 
 /* Smallest phones: the transport and menu keep one row; the wordmark gives way. */
 @media (max-width:360px){.word{display:none}}
+
+.engine-load{font-size:var(--t-s);color:var(--dim);display:flex;gap:calc(var(--u)*3);flex-wrap:wrap;justify-content:center}
+.engine-load output{color:var(--amber);font-variant-numeric:tabular-nums}
+.strip:has(.lane-meter){position:relative}
+.lane-meter{position:absolute;width:calc(var(--u)*2);top:34%;bottom:22%;right:calc(var(--u)*2);overflow:hidden;background:var(--well);border:1px solid var(--edge);pointer-events:none}
+.lane-meter > i{display:block;height:100%;width:100%;background:var(--amber);transform-origin:bottom;transform:scaleY(var(--lane-level,0))}
+@media(max-width:640px){
+ .lane-meter{top:auto;bottom:1px;left:calc(var(--u)*24);right:calc(var(--u)*76);width:auto;height:calc(var(--u)*2)}
+ .lane-meter > i{transform-origin:left;transform:scaleX(var(--lane-level,0))}
+}

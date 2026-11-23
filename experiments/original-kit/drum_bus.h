@@ -33,6 +33,11 @@ typedef struct {
     /* Positive maximum reduction in the most recently processed span, dB.
        Read on the render thread or publish a synchronized UI copy. */
     float comp_gr_db, limiter_gr_db;
+#ifdef __wasm__
+    /* Browser telemetry only: pre-bus stereo lane peak, accumulated until read. */
+    unsigned meter_lanes;
+    float lane_peaks[BUS_PADS];
+#endif
 } DrumBus;
 
 BusMix bus_default_mix(void);

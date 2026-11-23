@@ -50,3 +50,17 @@ The code is GNU GPL v3 only (GPL-3.0-only). See [LICENSE](LICENSE) and [NOTICES.
 - **LFOs:** two independent sine, triangle or soft-square modulators for pad level. Depth defaults to zero and does not edit patches. Tempo sync follows the musical quarter rather than swung step boundaries and resets at Play; free mode runs on the audio clock. Changes are smoothed and both slots can target one lane.
 - **Share .txt:** a Pattern file stores both banks, tempo and swing. A Drum Preset file stores one pad’s recipe and edits, valid on the matching pad. Pick or drop a file, then select **Apply**. Pattern imports require stopped playback. Files are read locally and never uploaded.
 - Further verification: `node verify-performance.mjs` compares against the public `v0.1.0` tag and exercises phase, mute and file round trips; `./verify-core.sh` verifies exact event boundaries, bank switching and native/WASM parity.
+
+### Mixer levels and DSP Bench
+
+The eleven Mixer bars show per-drum sample peaks in dBFS after voice shaping,
+LFO, mute, fader, and pan, before the shared reverb, delay, and drum-bus
+processing. They aren't fader positions. Levels drop clear on mute; shared
+returns may still ring. Collection runs only while the Mixer is visible.
+
+From the menu, open **DSP Bench → Run Bench** with playback stopped. The
+benchmark runs the current live bank, tempo, voices, mixer and Dry/Bus settings
+through the same WASM engine in a worker with metering off. It warms up, then
+reports the median of three render passes as a fraction of the audio time
+rendered. This is an offline browser throughput estimate. It does not measure
+AudioWorklet deadlines, audio device latency, dropouts, or FM-1 CPU load.

@@ -178,6 +178,17 @@ static float render_block(DrumBus *b, const BusMix *m, float *lanes[BUS_PADS],
         float lg, rg;
         balance(v->pan,level,&lg,&rg);
         const float *src = lanes[p] + offset;
+#ifdef __wasm__
+        if (b->meter_lanes) {
+            float peak = 0.f;
+            for (unsigned i = 0; i < n; ++i) {
+                const float x = src[i], a = x < 0 ? -x : x;
+                if (a > peak) peak = a;
+            }
+            peak *= lg > rg ? lg : rg;
+            if (peak > b->lane_peaks[p]) b->lane_peaks[p] = peak;
+        }
+#endif
         float rv = level * master_rv * kit_unit(v->reverb);
         float dl = level * master_dl * kit_unit(v->delay);
         if (rv != 0 || dl != 0) {

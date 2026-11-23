@@ -215,6 +215,7 @@ function toggleMute(p){
   const v=state.mutes[p]=!state.mutes[p];
   muteButtons[p].setAttribute("aria-pressed",String(v));muteButtons[p].closest(".lane-row").classList.toggle("muted",v);
   strips[p]?.mute.setAttribute("aria-pressed",String(v));
+  if(v&&strips[p])setLaneMeter(strips[p],0);
   send("mute",{pad:p+1,value:v});persist();
 }
 
@@ -407,6 +408,18 @@ function drawDesk(){
     ys.push(mid-y*amp*(kind==="envelope"?2:1)+(kind==="envelope"?amp:0));}
   plot(g,ys,col);
 }
+const laneMetersVisible=()=>document.body.dataset.view==="mixer"&&!document.hidden;
+function setLaneMeter(a,peak){
+  a.peak=peak;
+  const db=Math.round(Math.max(-60,Math.min(0,20*Math.log10(peak))));
+  a.fill.style.setProperty("--lane-level",(db+60)/60);
+  a.meter.setAttribute("aria-valuenow",String(db));
+  a.meter.setAttribute("aria-valuetext",db===-60?"Below −60 dBFS":db+" dBFS");
+}
+function syncLaneMeters(){
+  send("meter",{value:laneMetersVisible()});
+  if(!laneMetersVisible())for(const a of strips)if(a)setLaneMeter(a,0);
+}
 /* ---------- mixer view ---------- */
 function buildMixer(){
   const area=$("mixer");
@@ -425,8 +438,10 @@ function buildMixer(){
     const name=make("button",short[p-1],{type:"button",class:"strip-name",title:names[p-1],"aria-label":"Edit "+names[p-1]});name.onclick=()=>{selectVoice(p);showView("drum");};
     const pan=knob({id:"mix-pan-"+p,label:"PAN",min:-100,max:100,value:state.pans[p-1],def:0,fmt:panText,onInput:v=>setPan(p,v),cls:"mini pan"});
     pan.title=names[p-1]+" pan";
-    strip.append(name,sends[0],sends[1],pan,fader,read,mute);area.append(strip);
-    strips[p-1]={level,sends,mute,pan};
+    const meter=make("span",null,{class:"lane-meter",role:"meter","aria-label":names[p-1]+" audio peak","aria-valuemin":-60,"aria-valuemax":0,"aria-valuenow":-60,"aria-valuetext":"Silent",title:names[p-1]+" audio peak after level, pan and mute, before shared effects"});
+    const fill=make("i");meter.append(fill);
+    strip.append(name,sends[0],sends[1],pan,fader,meter,read,mute);area.append(strip);
+    strips[p-1]={level,sends,mute,pan,meter,fill,peak:0};
   }
   // The two returns are faders too, set apart on their own panel.
   const ret=$("returns");
@@ -547,6 +562,7 @@ function showView(t){
   if(!views.includes(t))t="sequence";
   const changed=document.body.dataset.view!==t;
   document.body.dataset.view=t;ui.view=t;saveUI();
+  syncLaneMeters();
   for(const b of document.querySelectorAll(".modes [data-tab]"))b.setAttribute("aria-selected",String(b.dataset.tab===t));
   // Size the knobs of the view now shown at once, without waiting for a resize callback.
   if(t==="drum")fitDesk();else if(t==="bus")fitKnobs($("macros"));else if(t==="lfo")document.querySelectorAll(".lfo-centre").forEach(fitCentre);
@@ -607,6 +623,21 @@ function drawScope(){
   const ys=[];for(let x=0;x<w;x++)ys.push(y0-Math.max(-1,Math.min(1,scopeBuf[start+Math.floor(x*N/w)]*1.4))*(h/2-2));
   plot(g,ys,COL.blue);
 }
+let bench=null;
+function runBench(){
+  const button=$("bench"),out=$("dsp-load");
+  if(bench)return;
+  if(playing){out.value="STOP PLAYBACK TO BENCH";return;}
+  button.disabled=true;out.value="TESTING CURRENT PATTERN…";
+  try{
+    const worker=bench=new Worker(new URL("bench.js",import.meta.url),{type:"module"});
+    const finish=v=>{clearTimeout(timer);worker.terminate();bench=null;button.disabled=false;out.value=v;};
+    const timer=setTimeout(()=>finish("BENCH TIMED OUT"),18000);
+    worker.onerror=()=>finish("BENCH UNAVAILABLE");
+    worker.onmessage=({data})=>finish(data.error?"BENCH UNAVAILABLE":data.pct.toFixed(1)+"% OF BUDGET · OFFLINE");
+    worker.postMessage({module,state});
+  }catch{bench=null;button.disabled=false;out.value="BENCH UNAVAILABLE";}
+}
 async function enableAudio(){
   if(ctx?.state==="running"&&port)return true;
   if(connecting)return connecting;
@@ -620,6 +651,10 @@ async function enableAudio(){
         const gain=ctx.createGain();gain.gain.value=.5;node.connect(gain).connect(ctx.destination);port=node.port;
         analyser=ctx.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=0;node.connect(analyser);
         port.onmessage=({data})=>{
+          if(data.lanes&&laneMetersVisible())for(let p=0;p<11;p++){
+            const a=strips[p];
+            setLaneMeter(a,state.mutes[p]?0:Math.max(a.peak*.77,data.lanes[p]));
+          }
           if(active!==data.step||playingBank!==data.bank||queuedBank!==data.queued){
             const promoted=playing&&playingBank!==data.bank&&data.queued<0;
             if(active!==data.step&&data.step>=0){stepAt=performance.now()/1000;
@@ -634,7 +669,7 @@ async function enableAudio(){
           if(data.p){lfoPhase=data.p;lfoAt=performance.now();}
         };
         node.addEventListener("processorerror",()=>{info.textContent="Audio processor stopped. Reload to retry.";playing=false;$("play").disabled=true;});
-        send("state",{state});
+        send("state",{state});syncLaneMeters();
       }
       await ctx.resume();if(ctx.state!=="running")throw Error("Audio is still suspended.");
       info.textContent=playing?"Playing":"Audio ready";return true;
@@ -714,6 +749,7 @@ try{
   };
   for(const b of document.querySelectorAll(".modes [data-tab]"))b.onclick=()=>showView(b.dataset.tab);
   for(const b of document.querySelectorAll("[data-lfo]"))b.onclick=()=>showLFO(+b.dataset.lfo);
+  $("bench").onclick=runBench;document.addEventListener("visibilitychange",syncLaneMeters);
   $("fx-off").onchange=()=>setFx($("fx-off").checked);setFx(!!ui.fxOff);
   showView(ui.view);$("screen").classList.remove("fringe");
   playingBank=state.playBank;chooseBank(state.editBank);

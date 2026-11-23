@@ -3,10 +3,12 @@ class BongDrums extends AudioWorkletProcessor{
   constructor(options){
     super();this.x=boot(options.processorOptions.module);this.last=-2;this.bank=-1;this.queued=-2;this.ticks=0;this.peakC=0;this.peakL=0;this.peakO=0;
     const x=this.x;
+    this.padPeaks=x.bd_meter_lanes?new Float32Array(x.memory.buffer,x.bd_lane_peaks(),11):null;
     this.left=new Float32Array(x.memory.buffer,x.bd_left(),256);
     this.right=new Float32Array(x.memory.buffer,x.bd_right(),256);
     this.port.onmessage=({data:d})=>{
       switch(d.kind){
+        case "meter": this.meter=!!this.padPeaks&&!!d.value;x.bd_meter_lanes?.(this.meter);break;
         case "state": apply(x,d.state);break;
         case "play": d.value?x.bd_start():x.bd_stop();break;
         case "hit": x.bd_hit(d.pad,d.accent);break;
@@ -38,7 +40,7 @@ class BongDrums extends AudioWorkletProcessor{
     const step=x.bd_step();
     const bank=x.bd_active(),queued=x.bd_queued();
     if(step!==this.last||bank!==this.bank||queued!==this.queued||++this.ticks>=18){
-      this.port.postMessage({step,bank,queued,c:this.peakC,l:this.peakL,o:this.peakO,p:[x.bd_lfo_phase(0)>>>0,x.bd_lfo_phase(1)>>>0]});this.last=step;this.bank=bank;this.queued=queued;this.ticks=0;this.peakC=0;this.peakL=0;this.peakO=0;
+      this.port.postMessage({step,bank,queued,c:this.peakC,l:this.peakL,o:this.peakO,lanes:this.meter?Array.from(this.padPeaks):null,p:[x.bd_lfo_phase(0)>>>0,x.bd_lfo_phase(1)>>>0]});this.last=step;this.bank=bank;this.queued=queued;this.ticks=0;this.peakC=0;this.peakL=0;this.peakO=0;if(this.meter)x.bd_clear_lane_peaks();
     }
     return true;
   }

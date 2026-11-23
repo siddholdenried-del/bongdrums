@@ -2,6 +2,7 @@
 #include "presets.h"
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
 static Station s;
 static float left[256],right[256];
 void bd_init(void){station_init(&s);}
@@ -35,6 +36,11 @@ void bd_macro(int k,int v){BusMix m=s.mix;bus_set_macro(&m,k,v);station_set_mix(
 void bd_render(int n){if(n>0&&n<=256)station_render(&s,left,right,n);}
 float *bd_left(void){return left;}
 float *bd_right(void){return right;}
+#ifdef __wasm__
+float *bd_lane_peaks(void){return s.bus.lane_peaks;}
+void bd_clear_lane_peaks(void){memset(s.bus.lane_peaks,0,sizeof s.bus.lane_peaks);}
+void bd_meter_lanes(int enabled){bd_clear_lane_peaks();s.bus.meter_lanes=!!enabled;}
+#endif
 float bd_comp(void){return s.comp_gr_db;}
 float bd_limit(void){return s.limiter_gr_db;}
 int bd_recipe(int p,int r){return p>0&&p<=11?kit_preset_apply(&s.patch[p-1],p,r):0;}
