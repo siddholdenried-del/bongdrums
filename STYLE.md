@@ -12,12 +12,12 @@ The reference implementation is this repository's `web/` folder: `desk.css` for 
 2. **One editor at a time.** Only the transport, tempo and mode tabs stay on screen. Each tab shows one editor and nothing else. No sidebars, and no hidden editors squeezed into a footer.
 3. **The visual leads, the controls follow.** In an editor the display (plot or scope) is the main panel. Controls are a compact strip beneath it.
 4. **Hardware, not a web form.** Four knobs at a time, pages you step through, a screen that answers what you touch. The model is a small hardware synth or drum machine (the M-Vave FM-1 is the reference), not a settings page.
-5. **Designed for the pixelation.** Every size, border and stroke sits on the pixel-block grid (section 2), so the VHS mosaic lands on edges instead of smearing them. The design must still read cleanly with the effect turned off.
+5. **Crisp interfaces, pixel scopes.** Use the block grid (section 2) for proportions, but never rasterize the whole instrument. Text and controls stay sharp with or without VHS.
 6. **Switching views never touches audio.** Changing tabs never stops playback, changes the playing pattern or cuts tails.
 
 ## 2. The pixel unit
 
-Everything is measured in `--u`, the size of one VHS pixel block:
+Everything is measured in `--u`, the scope’s logical pixel size:
 
 | | `--u` |
 |---|---|
@@ -29,7 +29,7 @@ Everything is measured in `--u`, the size of one VHS pixel block:
 - **Gaps and padding:** whole multiples of `--u` (2u, 3u, 4u, 6u …).
 - **Corners:** square (radius 0). Knobs are the only round shapes.
 - **Shadows:** solid offset blocks only. No blur, no glow.
-- **Never:** hairlines thinner than 1u, dashed or dotted lines, gradients across controls, soft shadows. They break apart under the mosaic.
+- **Never:** hairlines thinner than 1u, dashed or dotted lines, gradients across controls, soft shadows.
 - **SVG strokes:** `vector-effect: non-scaling-stroke` with `stroke-width: var(--u)` (2u for knob pointers), so strokes stay whole blocks at any knob size.
 
 ## 3. Type
@@ -154,17 +154,15 @@ Hard rules:
 
 ## 9. The VHS treatment
 
-- **Mosaic pixelation:** an SVG filter on the app. Soften the image by about one block (`feGaussianBlur` ≈ 0.9 on desktop, 0.6 on phones), lift it slightly (gamma ≈ 0.8), keep one sample per block and dilate it to fill the block. Averaging rather than point-sampling is what keeps text legible. The filters are `#pixelate` (3 px) and `#pixelate-fine` (2 px) in `index.html`.
-- **Scanlines:** faint, and inside the plots and scopes only. Never over the whole interface.
-- **Behind the controls:** a slow drift and a vignette. A rare tracking ripple is allowed in the outer margins only.
-- **On tab change:** a brief colour fringe on the frame, never on text.
-- **FX OFF** (☰ menu) removes all of it. Reduced-motion settings stop the drift, ripple and fringe. Everything must look finished with the effect off.
-- **No** constant jitter, heavy blur, full-screen flicker or poker or HUD motifs.
+- **Overlay only:** a fixed, click-through CSS overlay provides subtle scanlines and a little bleed at the left and right edges. No SVG/post-processing filter on the app; do not animate, scale, or blur its controls.
+- **Scopes:** still render their own low-resolution pixel canvas. Scope-only scanlines and phosphor trails stay local to the screen.
+- **FX OFF** (☰ menu) removes the overlay, scope scanlines, and trails without changing the audio or native canvas resolution. The overlay is static at all times, including reduced motion.
+- **No** full-screen animation, jitter, blur, or flicker.
 
 ## 10. Motion
 
-- Short and stepped (`steps()`), 0.15–0.3 s: hit flashes, the fringe, press states.
-- Nothing moves on its own except the displays (trace, LFO, meters) and the slow background drift.
+- Short and stepped (`steps()`), 0.15–0.3 s: hit flashes and press states.
+- Nothing moves on its own except the displays (trace, LFO, meters).
 
 ## 11. Accessibility
 
@@ -186,6 +184,6 @@ Before calling a layout done:
 1. **No page scroll and no clipped content in any view** at 320×568, 375×812, 390×844, 1280×720, 1440×900 and 1280×1280. Hidden overflow hides clipping, so assert that no visible element's right edge passes the viewport, not just that nothing scrolls. `verify-browser.mjs` does both.
 2. **Sizes at 1280×720:** trace 260–320 px, knob strip 110–140 px, all dials on one baseline.
 3. **At 1280×1280:** a larger knob strip and plot, with the BongSoft mark fully on screen.
-4. **Readable text:** check true-resolution (100% zoom, 1:1 pixel) screenshots of every view at desktop and phone size. Downscaled previews exaggerate the mosaic and can't be used to judge legibility.
+4. **Readable text:** check true-resolution (100% zoom, 1:1 pixel) screenshots of every view at desktop and phone size. Downscaled previews aren’t suitable for judging text legibility.
 5. **Views:** switch through every tab while playing and confirm audio keeps sounding.
 6. **Security policy:** load the real hosted wrapper page and confirm zero CSP violations and zero console errors.
