@@ -96,14 +96,15 @@ for(const [code,name] of [["KeyA","01 KICK"],["KeyR","05 MID TOM"],["KeyK","08 O
 await js(`(()=>{const l=document.getElementById("mix-level-1");l.value=40;l.dispatchEvent(new Event("input"));})()`);
 assert.equal(await js(`document.querySelector("#kit").value`),"-1");
 // Pickers: a button opens a tile sheet; a tile sets the hidden select; Escape closes.
-await js(`document.querySelector('.modes [data-tab=drum]').click();document.querySelector("#kit + .pick").click()`);
+await js(`document.querySelector('.modes [data-tab=sequence]').click();document.getElementById("kit-p").click()`);
 assert.deepEqual(await js('[document.getElementById("sheet").hidden,document.querySelectorAll("#sheet-grid .tile").length]'),[false,11]);
 await js('document.querySelectorAll("#sheet-grid .tile")[5].click()');
-assert.deepEqual(await js('[document.getElementById("sheet").hidden,document.querySelector("#kit").value,document.querySelector("#kit + .pick").textContent.startsWith("DUB CHAMBER")]'),[true,"5",true]);
+assert.deepEqual(await js('[document.getElementById("sheet").hidden,document.querySelector("#kit").value,document.getElementById("kit-p").title]'),[true,"5","Kit: DUB CHAMBER"]);
+await js(`document.querySelector('.modes [data-tab=drum]').click()`);
 await js('document.getElementById("drum-pick").click()');
 await call("Input.dispatchKeyEvent",{type:"keyDown",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
 assert.equal(await js('document.getElementById("sheet").hidden'),true);
-await js('document.querySelector("#recipe + .pick").click()');await js('document.querySelectorAll("#sheet-grid .tile")[1].click()');
+await js('document.getElementById("preset-p").click()');await js('document.querySelectorAll("#sheet-grid .tile")[1].click()');
 assert.equal(await js('document.querySelector("#recipe").value'),"1");
 console.log("Kit and pattern library, musical hotkeys and custom-kit marking, tile pickers and preset buttons passed");
 // Views are display only: switching through all five keeps playback, the playing bank and tails.
@@ -136,10 +137,22 @@ assert.match(await js('getComputedStyle(document.querySelector(".app")).filter')
 await js('(()=>{const f=document.getElementById("fx-off");f.checked=true;f.dispatchEvent(new Event("change"))})()');
 assert.equal(await js('getComputedStyle(document.querySelector(".app")).filter'),"none");
 await js('(()=>{const f=document.getElementById("fx-off");f.checked=false;f.dispatchEvent(new Event("change"))})()');
+// FM-1 style: at most four knobs per page, a page bar, a screen that follows what you touch, and pop-up readouts elsewhere.
+await js(`document.querySelector('.modes [data-tab=drum]').click();document.querySelector("#voice-tabs, #drum-pick");`);
+await js(`(()=>{const s=document.getElementById("voice-next");while(document.getElementById("sound-heading").textContent!=="01 KICK")s.click();})()`);
+assert.deepEqual(await js('[document.querySelectorAll("#params .knob").length,document.getElementById("page-val").textContent]'),[4,"PAGE 1/2"]);
+await js('document.getElementById("page-next").click()');
+assert.deepEqual(await js('[document.querySelectorAll("#params .knob").length,document.getElementById("page-val").textContent,document.querySelector("#params .knob .kl").textContent]'),[4,"PAGE 2/2","CLICK LEVEL"]);
+await js('(()=>{const i=document.querySelectorAll("#params .knob-input")[2];i.value=-400;i.dispatchEvent(new Event("input",{bubbles:true}))})()');
+assert.deepEqual(await js('[document.getElementById("lcd-label").textContent,document.getElementById("lcd-value").value]'),["TONE","DARK 40%"]);
+await js('document.getElementById("page-prev").click()');
+await js(`document.querySelector('.modes [data-tab=mixer]').click();(()=>{const f=document.getElementById("mix-level-2");f.value=60;f.dispatchEvent(new Event("input",{bubbles:true}))})()`);
+assert.deepEqual(await js('[document.getElementById("lcd-pop").classList.contains("on"),document.querySelector("#lcd-pop span").textContent]'),[true,"SD LEVEL"]);
 await js('document.querySelector("#play").click()');await js(`document.querySelector('.modes [data-tab=sequence]').click()`);
 console.log("Five views switch without stopping playback; return controls, knob fitting, scope, scrolling LFO, pixelation toggle and mute placement wired");
 // One-screen instrument: no page scroll at phone or desktop sizes.
 for(const [w,h] of [[320,568],[390,844],[1280,720],[1440,900]]){
+ await call("Emulation.setDeviceMetricsOverride",{width:w,height:h,deviceScaleFactor:1,mobile:w<760});await wait(250);
  for(const v of ["drum","lfo","mixer","bus","sequence"]){
   await js(`document.querySelector('.modes [data-tab=${v}]').click()`);
   const o=await js('({sh:document.documentElement.scrollHeight,h:innerHeight,sw:document.documentElement.scrollWidth,w:innerWidth})');
@@ -147,8 +160,10 @@ for(const [w,h] of [[320,568],[390,844],[1280,720],[1440,900]]){
   // Nothing visible may be clipped off the right edge (overflow is hidden, so scroll checks can't see it).
   const clipped=await js(`[...document.querySelectorAll(".app *")].filter(e=>e.offsetParent&&e.getClientRects().length&&!e.closest(".menu-body")).map(e=>[e,e.getBoundingClientRect()]).filter(([e,r])=>r.width>0&&r.right>innerWidth+1).map(([e,r])=>(e.id||e.className||e.tagName)+"@"+Math.round(r.right)).slice(0,5)`);
   assert.deepEqual(clipped,[],`${v} clips at ${w}x${h}`);
+  // The menu stays on the transport row.
+  const rowGap=await js('(()=>{const m=document.querySelector(".menu summary").getBoundingClientRect(),p=document.getElementById("play").getBoundingClientRect();return [Math.round(m.top),Math.round(m.bottom),Math.round(p.top),Math.round(p.bottom),Math.round(m.right),innerWidth,document.querySelector(".bar").scrollWidth]})()');
+  assert.ok(rowGap[0]<rowGap[3]&&rowGap[1]>rowGap[2],`menu wraps at ${w}x${h}: ${JSON.stringify(rowGap)}`);
  }
- await call("Emulation.setDeviceMetricsOverride",{width:w,height:h,deviceScaleFactor:1,mobile:w<760});await wait(250);
  const p=await js('({w:innerWidth,h:innerHeight,sw:document.documentElement.scrollWidth,sh:document.documentElement.scrollHeight,steps:[...document.querySelectorAll(".step")].filter(s=>s.offsetParent).length})');
  assert.ok(p.sw<=p.w&&p.sh<=p.h,`page scrolls at ${w}x${h}: ${JSON.stringify(p)}`);
  assert.equal(p.steps,176,"all 16 steps of all 11 drums on one screen at "+w);
