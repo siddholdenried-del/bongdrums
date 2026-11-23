@@ -153,7 +153,7 @@ assert.deepEqual(await js('[document.getElementById("lcd-pop").classList.contain
 await js('document.querySelector("#play").click()');await js(`document.querySelector('.modes [data-tab=sequence]').click()`);
 console.log("Five views switch without stopping playback; return controls, knob fitting, scope, scrolling LFO, pixelation toggle and mute placement wired");
 // One-screen instrument: no page scroll at phone or desktop sizes.
-for(const [w,h] of [[320,568],[375,812],[390,844],[1280,720],[1440,900]]){
+for(const [w,h] of [[320,568],[375,812],[390,844],[1280,720],[1440,900],[1280,1280]]){
  await call("Emulation.setDeviceMetricsOverride",{width:w,height:h,deviceScaleFactor:1,mobile:w<760});await wait(250);
  for(const v of ["drum","lfo","mixer","bus","sequence"]){
   await js(`document.querySelector('.modes [data-tab=${v}]').click()`);
@@ -169,8 +169,14 @@ for(const [w,h] of [[320,568],[375,812],[390,844],[1280,720],[1440,900]]){
  const p=await js('({w:innerWidth,h:innerHeight,sw:document.documentElement.scrollWidth,sh:document.documentElement.scrollHeight,steps:[...document.querySelectorAll(".step")].filter(s=>s.offsetParent).length})');
  assert.ok(p.sw<=p.w&&p.sh<=p.h,`page scrolls at ${w}x${h}: ${JSON.stringify(p)}`);
  assert.equal(p.steps,176,"all 16 steps of all 11 drums on one screen at "+w);
+ if(w===1280&&h===1280){
+   await js(`document.querySelector('.modes [data-tab=drum]').click()`);await wait(150);
+   const sq=await js('(()=>{const r=s=>document.querySelector(s).getBoundingClientRect();return {plot:Math.round(r(".plot").height),strip:Math.round(r("#params").height),dial:Math.round(r("#params .dial").width),logo:Math.round(r(".bongsoft-mark").width),logoBottom:Math.round(r(".bongsoft-mark").bottom)}})()');
+   assert.ok(sq.plot>=550&&sq.strip>=250&&sq.dial>=150&&sq.logo>=280&&sq.logoBottom<=1280,"1280x1280 gives the plot and knobs the room, with the BongSoft mark at the bottom: "+JSON.stringify(sq));
+   await js(`document.querySelector('.modes [data-tab=sequence]').click()`);
+ }
  const s=await call("Page.captureScreenshot",{format:"png"});await writeFile(`BongDrums-${w}.png`,Buffer.from(s.data,"base64"));
 }
-console.log("No page scroll or clipped content in any view at 320x568, 375x812, 390x844, 1280x720 and 1440x900; all 176 steps on one screen at every size");
+console.log("No page scroll or clipped content in any view at 320x568, 375x812, 390x844, 1280x720, 1440x900 and 1280x1280; all 176 steps on one screen at every size");
 ws.close();
 }finally{proc.kill();}

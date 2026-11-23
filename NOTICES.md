@@ -6,4 +6,4 @@
 - The standalone WebAssembly build uses Emscripten system libraries. C/math/WASI and compiler-runtime notices from the SDK are bundled in `web/licenses/`.
 - Barlow (web/art/display.woff2): Copyright 2017 The Barlow Project Authors, SIL Open Font License 1.1. The license is in web/art/OFL-barlow.txt.
 - Historical image sources: the double siren in John Tyndall’s [Sound](https://www.gutenberg.org/ebooks/54969), Théodule Ribot’s [Study of Hands](https://www.clevelandart.org/art/2009.120.a), and Athanasius Kircher’s [Musurgia Universalis](https://dcp-production-container.library.cornell.edu/catalog/ss%3A550164). These are historical public-domain works; links credit the editions/digitizers rather than applying the GPL to those works.
-- The BongCult and BongSoft names identify their respective projects; the code license does not grant a trademark license.
+- The BongCult and BongSoft names identify their respective projects; the code license does not grant a trademark license. That includes the BongSoft wordmark artwork in `web/art/bongsoft-logo-cutout.webp`.

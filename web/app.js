@@ -353,8 +353,8 @@ function turnPage(d){const n=deskPages(selected).length;pageOf[selected]=((pageO
 // The knob strip stays compact; the dial is sized from the strip's own height.
 function fitDesk(){
   const box=$("params"),h=box.clientHeight;if(!h)return;
-  let text=0;for(const k of box.querySelectorAll(".knob"))text=Math.max(text,(k.querySelector(".kl")?.offsetHeight||0)+(k.querySelector(".kv")?.offsetHeight||0));
-  box.style.setProperty("--dial",Math.round(Math.max(40,Math.min(76,h-text-unit()*4)))+"px");
+  let text=0,w=1e9;for(const k of box.querySelectorAll(".knob")){text=Math.max(text,(k.querySelector(".kl")?.offsetHeight||0)+(k.querySelector(".kv")?.offsetHeight||0));w=Math.min(w,k.clientWidth);}
+  box.style.setProperty("--dial",Math.round(Math.max(40,Math.min(200,w-unit()*2,h-text-unit()*4)))+"px");
 }
 
 /* ---------- screens: what you touch, read back ---------- */

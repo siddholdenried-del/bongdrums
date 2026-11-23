@@ -60,7 +60,7 @@ kbd{font:700 var(--t-s) var(--mono);border:var(--u) solid var(--edge);border-bot
 select{background:var(--felt-lo);border:var(--u) solid var(--ring);border-radius:0;padding:var(--u) calc(var(--u)*2);min-height:calc(var(--u)*12);color:var(--cream);cursor:pointer;min-width:0}
 
 /* ---------- frame ---------- */
-.app{position:relative;z-index:1;height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);padding:calc(var(--u)*4) calc(var(--u)*6)}
+.app{position:relative;z-index:1;height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;padding:calc(var(--u)*4) calc(var(--u)*6)}
 .bar{display:flex;align-items:center;gap:calc(var(--u)*3) calc(var(--u)*5);padding-bottom:calc(var(--u)*3);border-bottom:var(--u) solid var(--cream);position:relative;z-index:5}
 .word{margin:0;font:700 var(--t-l)/1 var(--mono);letter-spacing:.04em;color:var(--cream);text-shadow:var(--u) var(--u) 0 var(--carmine-lo)}
 .transport{display:flex;align-items:center;gap:calc(var(--u)*3);min-width:0}
@@ -189,16 +189,20 @@ body[data-view=mixer] .view[data-view=mixer],body[data-view=bus] .view[data-view
 .plot-trace canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
 /* Scanlines live inside the plots only, and stay faint. */
 .plot-trace::after,.scope::after,.bus-scope::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(180deg,#0000 0 2px,#00000038 2px 3px)}
-.page-bar{align-self:center}
-.page-bar .arrow{min-width:calc(var(--u)*18);font-size:var(--t-l)}
-.page-bar .val{min-width:12ch;font-size:var(--t-l);letter-spacing:.12em}
+.page-tag{flex:none;font-size:var(--t-m);color:var(--cream);letter-spacing:.12em;padding:0 calc(var(--u)*3);box-shadow:inset 0 0 0 var(--u) #5D93B0}
 .stepbar .arrow:disabled{opacity:.3;cursor:default;background:transparent}
-.desk-knobs{flex:none;display:flex;justify-content:center;align-items:stretch;gap:calc(var(--u)*6);height:clamp(110px,18dvh,140px)}
+/* Knob row: page arrows at the sides, knobs spread across the width between them.
+   The row grows with the window: about 130 px at 720 tall, about 300 px at 1280. */
+.desk-row{flex:none;display:flex;align-items:stretch;gap:calc(var(--u)*3);height:clamp(110px,calc(130px + (100dvh - 720px) * .3),300px)}
+.page-arrow{flex:none;width:calc(var(--u)*16);border:0;background:var(--felt-lo);color:var(--amber);font:700 var(--t-l)/1 var(--mono);cursor:pointer;user-select:none;box-shadow:inset 0 0 0 var(--u) var(--cream),0 calc(var(--u)*2) 0 var(--felt-lo)}
+.page-arrow:hover{background:var(--cell)}
+.page-arrow:active{background:var(--amber);color:var(--felt);transform:translateY(var(--u))}
+.desk-knobs{flex:1;min-width:0;display:flex;justify-content:space-evenly;align-items:stretch;gap:calc(var(--u)*3)}
 /* Bottom-aligned: dials and values share one line; a longer label grows upward. */
-.desk-knobs .knob{width:clamp(78px,13vw,170px);gap:var(--u);justify-content:flex-end}
+.desk-knobs .knob{flex:1 1 0;min-width:0;gap:var(--u);justify-content:flex-end}
 .desk-knobs .knob .dial{width:var(--dial,60px)}
-.desk-knobs .knob .kl{font-size:17px;line-height:1.1;white-space:normal;max-width:100%;overflow-wrap:anywhere;color:var(--dim)}
-.desk-knobs .knob .kv{font-size:18px;color:var(--amber);white-space:nowrap}
+.desk-knobs .knob .kl{font-size:clamp(22px,calc(var(--dial,60px)*.16),32px);line-height:1.1;white-space:normal;max-width:100%;overflow-wrap:anywhere;color:var(--dim)}
+.desk-knobs .knob .kv{font-size:clamp(26px,calc(var(--dial,60px)*.18),36px);color:var(--amber);white-space:nowrap}
 .desk-knobs .knob.on .kl{color:var(--amber)}
 .desk-knobs .knob.on .face{stroke:var(--amber)}
 .lcd-pop{position:absolute;top:calc(var(--u)*2);left:50%;transform:translateX(-50%);z-index:6;display:none;flex-direction:column;align-items:center;gap:var(--u);
@@ -280,6 +284,14 @@ body[data-view=drum] .lcd-pop{display:none}
 .meters .meter i{background:linear-gradient(90deg,var(--blue) 0 70%,var(--amber) 70% 88%,var(--carmine) 88%)}
 body.is-dry .view[data-view=bus] .knobs{opacity:.45}
 
+/* ---------- BongSoft mark: on tall desktop windows, along the bottom ---------- */
+.brand-foot{display:none}
+@media (min-width:641px) and (min-height:900px){
+  .brand-foot{display:flex;justify-content:center;align-items:center;padding-top:calc(var(--u)*6)}
+}
+/* The official sticker artwork as-is, with a carmine drop to sit it on the deck. */
+.bongsoft-mark{display:block;width:clamp(280px,32vw,480px);height:auto;filter:drop-shadow(calc(var(--u)*2) calc(var(--u)*2) 0 var(--carmine-lo))}
+
 /* ---------- VHS: drift behind, pixelation over, scanlines one per block ---------- */
 .vhs{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .vhs i{position:absolute;inset:0;display:block}
@@ -340,10 +352,9 @@ body.fx-off .screen.fringe::after{display:none}
   .desk-top{justify-content:space-between;gap:calc(var(--u)*2)}.voice-pick{flex:1;min-width:0}.voice-pick h2{min-width:0}
   .desk-top #audition{padding:0 calc(var(--u)*3)}
   .readout{padding:var(--u) calc(var(--u)*3);gap:calc(var(--u)*3)}.readout #crt-mode{display:none}
-  .page-bar{align-self:stretch}.page-bar .val{flex:1;min-width:0}
-  .desk-knobs{gap:calc(var(--u)*2);height:auto;min-height:120px}
-  .desk-knobs .knob{width:auto;flex:1 1 0;min-width:0}
-  .desk-knobs .knob .kl{font-size:14px}.desk-knobs .knob .kv{font-size:15px}
+  .desk-row{gap:var(--u);height:auto;min-height:150px}.page-arrow{width:calc(var(--u)*11);font-size:var(--t-s)}
+  .desk-knobs{gap:var(--u)}
+  .desk-knobs .knob .kl{font-size:16px}.desk-knobs .knob .kv{font-size:17px;white-space:normal;text-align:center;line-height:1.1;min-height:2.2em}
   .lcd-pop{min-width:calc(100% - var(--u)*8)}
   .lfo-centre{grid-template-columns:1fr 1fr;grid-template-rows:minmax(110px,1fr) auto;gap:calc(var(--u)*6)}
   .lfo-centre .scope{grid-column:1/-1;grid-row:1;height:100%}
