@@ -305,7 +305,9 @@ body.is-dry .view[data-view=bus] .knobs{opacity:.45}
 .screen.fringe::after{content:"";position:absolute;inset:var(--u) calc(var(--u)*-2) calc(var(--u)*-1);pointer-events:none;box-shadow:calc(var(--u)*-1) 0 0 #dc453c88,var(--u) 0 0 #55a0c988;animation:fringe .28s steps(3,end) forwards}
 @keyframes fringe{from{opacity:1}to{opacity:0}}
 .fx-defs{position:absolute;width:0;height:0;overflow:hidden}
-body:not(.fx-off) .app{filter:url(#pixelate)}
+/* The SVG mosaic is opt-in per engine: Safari (WebKit) drops everything under an SVG filter
+   on HTML this large, so app.js adds .mosaic only where it renders (Chromium, Firefox). */
+html.mosaic body:not(.fx-off) .app{filter:url(#pixelate)}
 body.fx-off .vhs,body.fx-off .plot-trace::after,body.fx-off .scope::after,body.fx-off .bus-scope::after{display:none}
 body.fx-off .screen.fringe::after{display:none}
 @media (prefers-reduced-motion:reduce){
@@ -327,7 +329,7 @@ body.fx-off .screen.fringe::after{display:none}
 /* ---------- phone: a finer 2 px block ---------- */
 @media (max-width:640px){
   :root{--u:2px;--t-s:18px;--t-m:20px;--t-l:25px;--t-xl:34px;font-size:var(--t-s)}
-  body:not(.fx-off) .app{filter:url(#pixelate-fine)}
+  html.mosaic body:not(.fx-off) .app{filter:url(#pixelate-fine)}
   .app{padding:calc(var(--u)*4) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
   .bar{gap:calc(var(--u)*3)}
   .word{font-size:var(--t-s);letter-spacing:0}

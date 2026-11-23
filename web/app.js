@@ -3,6 +3,10 @@ import {exportPattern,exportPreset,parseFile,MAX_FILE,voiceIds} from "./files.js
 import {boot,apply} from "./engine.js";
 import {kits,patterns,patternValues} from "./library.js";
 const $=id=>document.getElementById(id);
+// Safari and every iOS browser are WebKit, which blanks the page under the SVG mosaic filter.
+// They keep the scanlines and drift; the mosaic is applied everywhere else.
+const WEBKIT=/AppleWebKit/.test(navigator.userAgent)&&!/Chrome|Chromium|Edg\//.test(navigator.userAgent);
+document.documentElement.classList.toggle("mosaic",!WEBKIT);
 const make=(tag,text,attrs={})=>{const e=document.createElement(tag);if(text!==null)e.textContent=text;for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);return e;};
 const names=["Kick","Snare","Clap","Low Tom","Mid Tom","High Tom","Closed Hat","Open Hat","Cymbal","Perc A","Perc B"];
 const short=["BD","SD","CP","LT","MT","HT","CH","OH","CY","P1","P2"];
