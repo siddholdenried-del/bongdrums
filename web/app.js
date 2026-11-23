@@ -113,7 +113,7 @@ function fitKnobs(box){
   box.style.setProperty("--dial",Math.round(Math.max(38,Math.min(200,best)))+"px");box.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
 }
 function fitCentre(box){const w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;box.style.setProperty("--dial",Math.round(Math.max(46,Math.min(170,(h-40)/1.6,w*.17)))+"px");}
-const fitter=new ResizeObserver(es=>es.forEach(e=>e.target.id==="params"?fitDesk():e.target.classList.contains("lfo-centre")?fitCentre(e.target):fitKnobs(e.target)));
+const fitter=new ResizeObserver(es=>es.forEach(e=>e.target.classList.contains("lfo-centre")?fitCentre(e.target):fitKnobs(e.target)));
 /* Tile sheet: one big grid of choices instead of a native dropdown. */
 let sheetReturn=null;
 function openSheet(title,items,current,onPick,cols,from){
@@ -343,6 +343,17 @@ function deskPages(p){
   pages.push({name:"FILTER",ks:[n-2,n-1]});return pages;
 }
 const pageOf={};let deskFocus=0;
+function updateDeckReadbacks(){
+  const knobs=$("params").children;
+  document.querySelectorAll(".deck-readback").forEach((cell,slot)=>{
+    const k=knobs[slot],empty=!k||k.classList.contains("deck-empty");
+    const label=empty?"":k.querySelector(".kl").textContent;
+    const value=empty?"—":k.querySelector(".kv").value;
+    if(cell.firstElementChild.textContent!==label)cell.firstElementChild.textContent=label;
+    if(cell.lastElementChild.value!==value)cell.lastElementChild.value=value;
+    cell.classList.toggle("on",!empty&&slot===deskFocus);
+  });
+}
 function buildParams(){
   const p=selected,area=$("params");area.replaceChildren();
   const defaults=scratch;defaults.bd_recipe(p,state.voices[p-1].recipe);
@@ -361,7 +372,12 @@ function buildParams(){
     const kn=knob({id:"param-"+k,label,min,max,value:v,def:option?min:defaults.bd_get(p,k),fmt,onInput:value=>{if(patchStore.bd_set(p,k,value))changed(k,value);},cls:option?"option":""});
     kn.dataset.slot=slot;kn.dataset.kind=deskKind(label,option);knobs.push([k,kn]);area.append(kn);
   });
-  refreshLocks();fitDesk();
+  for(let i=knobs.length;i<4;i++){
+    const empty=make("div",null,{class:"knob slot deck-empty","aria-hidden":"true"});
+    const dial=make("div",null,{class:"dial"});dial.innerHTML=DIAL;
+    empty.append(dial);area.append(empty);
+  }
+  refreshLocks();
   if(deskFocus>=knobs.length)deskFocus=0;
   const f=area.querySelector(`.knob[data-slot="${deskFocus}"]`);if(f)lcdShow(f.input,true);
 }
@@ -378,13 +394,6 @@ function deskKind(label,option){
 }
 function deskMark(){for(const kn of $("params").querySelectorAll(".knob"))kn.classList.toggle("on",+kn.dataset.slot===deskFocus);}
 function turnPage(d){const n=deskPages(selected).length;pageOf[selected]=((pageOf[selected]||0)+d+n)%n;deskFocus=0;buildParams();}
-// The knob strip stays compact; the dial is sized from the strip's own height.
-function fitDesk(){
-  const box=$("params"),h=box.clientHeight;if(!h)return;
-  let text=0,w=1e9;for(const k of box.querySelectorAll(".knob")){text=Math.max(text,(k.querySelector(".kl")?.offsetHeight||0)+(k.querySelector(".kv")?.offsetHeight||0));w=Math.min(w,k.clientWidth);}
-  box.style.setProperty("--dial",Math.round(Math.max(40,Math.min(200,w-unit()*2,h-text-unit()*4)))+"px");
-}
-
 /* ---------- screens: what you touch, read back ---------- */
 function controlInfo(el){
   if(!el?.closest)return null;
@@ -403,7 +412,7 @@ function lcdShow(el,quiet){
   const info=controlInfo(el);if(!info)return;
   const kn=el.closest?.("#params .knob");
   if(kn){
-    deskFocus=+kn.dataset.slot;deskMark();
+    deskFocus=+kn.dataset.slot;deskMark();updateDeckReadbacks();
     $("lcd-label").textContent=info[0];$("lcd-value").value=info[1];return;
   }
   if(quiet)return;
@@ -580,7 +589,7 @@ function showView(t){
   syncLaneMeters();
   for(const b of document.querySelectorAll(".modes [data-tab]"))b.setAttribute("aria-selected",String(b.dataset.tab===t));
   // Size the knobs of the view now shown at once, without waiting for a resize callback.
-  if(t==="drum")fitDesk();else if(t==="bus")fitKnobs($("macros"));else if(t==="lfo")document.querySelectorAll(".lfo-centre").forEach(fitCentre);
+  if(t==="bus")fitKnobs($("macros"));else if(t==="lfo")document.querySelectorAll(".lfo-centre").forEach(fitCentre);
   if(changed){const s=$("screen");s.classList.remove("fringe");void s.offsetWidth;s.classList.add("fringe");}
 }
 
@@ -742,7 +751,7 @@ try{
     macroKnobs.push(k);$("macros").append(k);
   });
   for(const c of document.querySelectorAll("input[name=busmode]"))c.onchange=()=>setDry(c.value==="dry");
-  fitter.observe($("params"));fitter.observe($("macros"));requestAnimationFrame(drawScope);
+  fitter.observe($("macros"));requestAnimationFrame(drawScope);
   setDry(state.dry,true);
   selectVoice(1);wireFile("pattern","Pattern");wireFile("preset","Drum Preset");
   viewKit();
