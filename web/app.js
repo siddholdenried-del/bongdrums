@@ -396,14 +396,14 @@ function drawDesk(){
   const kn=$("params").querySelector(`.knob[data-slot="${deskFocus}"]`);if(!kn||kn.classList.contains("slot"))return;
   const i=kn.input,lo=+i.min,hi=+i.max,v=+i.value,f=(v-lo)/(hi-lo||1),kind=kn.dataset.kind,ys=[];
   const age=performance.now()-lcdHit.t,hit=lcdHit.p===selected?Math.exp(-age/200):0,col=hit>.5?COL.cream:COL.amber;
-  if(kind==="steps"){const n=hi-lo+1,bw=Math.floor((w-(n+1)*3)/n);for(let s=0;s<n;s++){g.fillStyle=s===v-lo?COL.amber:"#1F3A4A";g.fillRect(3+s*(bw+3),top+2,bw,bot-top-4);}return;}
+  // Discrete choices and generic levels have no meaningful curve. Keep the live trace.
+  if(kind==="steps"||kind==="level")return;
   for(let x=0;x<w;x++){const t=x/(w-1);let y;
     if(kind==="envelope")y=Math.exp(-t/(.03+.9*f));
     else if(kind==="pitch")y=Math.sin(2*Math.PI*t*(2+12*f))*Math.exp(-t*1.5);
     else if(kind==="drive"){const gg=1+9*f;y=Math.tanh(gg*(2*t-1))/Math.tanh(gg);}
     else if(kind==="filter"){const b=v/(hi||1);y=b<0?(t<1+b*.85?1:Math.max(-1,1-(t-(1+b*.85))*8)):(t<b*.85?Math.min(1,-1+t/(b*.85+1e-6)*2):1);}
     else if(kind==="tilt")y=(1-2*t)*(1-2*f)*-1;
-    else y=t<f?1:-1;
     ys.push(mid-y*amp*(kind==="envelope"?2:1)+(kind==="envelope"?amp:0));}
   plot(g,ys,col);
 }
