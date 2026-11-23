@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {exportPattern,parseFile,packCell,unpackCell} from './web/files.js';
+for(let x=0;x<120;x++)assert.equal(packCell(unpackCell(x)),x);
+const p={bpm:137,swing:65,banks:Array.from({length:2},()=>Array.from({length:11},()=>Array(16).fill(0)))};
+assert.equal(JSON.parse(exportPattern(p)).version,1);
+assert.deepEqual(parseFile(exportPattern(p),'Pattern'),p);
+p.banks[1][3][15]=packCell([0,0,0,2]);p.banks[0][1][2]=packCell([0,1,2]);
+assert.equal(JSON.parse(exportPattern(p)).version,2);
+assert.deepEqual(parseFile(exportPattern(p),'Pattern'),p);
+const malformed=JSON.parse(exportPattern(p));malformed.banks[0][0][0]='...XX';
+assert.throws(()=>parseFile(JSON.stringify(malformed),'Pattern'));
+console.log('v1/v2 round trips, invalid cell rejection, all 120 cell encodings');

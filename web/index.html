@@ -47,6 +47,7 @@
       <button type="button" class="chunk preset-p" id="kit-p" aria-haspopup="dialog" aria-label="Kit">P</button><select id="kit" class="sr" tabindex="-1" aria-hidden="true"></select>
       <div class="seg" role="group" aria-label="Edit pattern"><button type="button" data-pattern="0">A</button><button type="button" data-pattern="1">B</button></div>
       <button id="activate-bank" class="chunk" type="button">SET A LIVE</button>
+      <button id="substeps" class="chunk" type="button" aria-pressed="false" title="Select a cell to edit substeps; keyboard shortcut: Shift+Enter on a cell">SUB</button>
       <span id="bank-readout" aria-live="polite">READY A</span>
       <div class="knob-slot" id="swing-slot"></div>
       <div class="picker"><span class="tag" id="load-label">LOAD INTO A</span><span class="stepbar wide"><button type="button" class="arrow" id="groove-prev" aria-label="Previous pattern">‹</button><select id="groove" aria-label="Pattern preset"></select><button type="button" class="arrow" id="groove-next" aria-label="Next pattern">›</button></span></div>
@@ -97,5 +98,6 @@
 </main>
 <footer class="brand-foot"><img class="bongsoft-mark" src="art/bongsoft-logo-cutout.webp" width="640" height="150" alt="BongSoft"></footer>
 </div>
+<dialog id="substep-dialog" aria-labelledby="substep-title"><h2 id="substep-title"></h2><div id="substep-count"></div><div id="substep-cells"></div><button class="chunk" id="substep-apply" type="button">APPLY</button><button class="chunk" id="substep-cancel" type="button">CANCEL</button></dialog>
 <div class="sheet" id="sheet" hidden><div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-head"><span id="sheet-title"></span><button type="button" class="chunk" id="sheet-close" aria-label="Close">✕</button></div><div class="sheet-grid" id="sheet-grid"></div></div></div>
 <script type="module" src="app.js"></script></body></html>

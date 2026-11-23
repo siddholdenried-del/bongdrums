@@ -12,6 +12,9 @@ typedef struct {
     int downbeat_pending;
     uint16_t hits_b[SEQ_PADS], accents_b[SEQ_PADS];
     int bank, queued, swing, pair_swing;
+    uint8_t subcells[2][SEQ_PADS][SEQ_STEPS];
+    uint16_t subhits[12], subaccents[12];
+    unsigned next_sub;
 } Sequencer;
 
 /* The caller owns transport and pattern state on the rendering thread.

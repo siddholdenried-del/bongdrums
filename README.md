@@ -65,3 +65,9 @@ rendered. This is an offline browser throughput estimate. It does not measure
 AudioWorklet deadlines, audio device latency, dropouts, or FM-1 CPU load.
 
 Saved kit send and return fields are retained as inactive legacy data. Browser builds exclude the spatial engine and buffers. The optional drum bus keeps saturation, compression, transient shaping, and limiting.
+
+### Substeps
+
+In SEQ, click **SUB** then select a drum cell, or focus a cell and press **Shift+Enter**. Pick 2, 3, or 4 subdivisions and cycle each through **OFF**, **HIT**, and **ACCENT**. **APPLY** saves the result; **1** restores an ordinary step. Split cells show their subdivision count. The first subdivision can be off for late-only hits. Edits apply the next time the sequencer reaches that cell.
+
+Substeps divide the actual swung duration of the parent step, without changing tempo or the A/B bar boundary. Patterns without subdivisions still export as v1; split patterns export as v2. Both are importable here; older builds cannot open v2 patterns.

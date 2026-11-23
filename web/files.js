@@ -3,8 +3,19 @@ export const MAX_FILE = 16 * 1024;
 export const voiceIds=["kick","snare","clap","low-tom","mid-tom","high-tom","closed-hat","open-hat","cymbal","perc-a","perc-b"];
 const bounded=(v,a,b)=>Number.isInteger(v)&&v>=a&&v<=b;
 const chars=".xX";
+export const validCell=v=>bounded(v,0,119);
+export function unpackCell(v){
+  if(v<3)return [v];
+  const count=v<12?2:v<39?3:4;
+  v-=count===2?3:count===3?12:39;
+  return Array.from({length:count},()=>{const hit=v%3;v=Math.floor(v/3);return hit;});
+}
+export const packCell=hits=>[0,0,3,12,39][hits.length]+hits.reduce((v,hit,i)=>v+hit*3**i,0);
+
 export function exportPattern(s){
-  return JSON.stringify({kind:"BongDrums Pattern",version:1,bpm:s.bpm,swing:s.swing,banks:s.banks.map(bank=>bank.map(row=>row.map(x=>chars[x]).join("")))},null,2)+"\n";
+  const split=s.banks.some(b=>b.some(r=>r.some(v=>v>2)));
+  const banks=s.banks.map(b=>b.map(r=>split?r.map(v=>unpackCell(v).map(x=>chars[x]).join("")):r.map(x=>chars[x]).join("")));
+  return JSON.stringify({kind:"BongDrums Pattern",version:split?2:1,bpm:s.bpm,swing:s.swing,banks},null,2)+"\n";
 }
 export function exportPreset(voice,voicePatch){
   return JSON.stringify({kind:"BongDrums Drum Preset",version:1,voice:voiceIds[voice-1],recipe:voicePatch.recipe,edits:voicePatch.edits},null,2)+"\n";
@@ -13,12 +24,12 @@ export function parseFile(text,expected,pad,probe){
   if(new TextEncoder().encode(text).length>MAX_FILE)throw Error("File exceeds the 16 KB limit.");
   let p;
   try{p=JSON.parse(text);}catch{throw Error("Not a valid BongDrums text file.");}
-  if(!p||p.kind!=="BongDrums "+expected||p.version!==1)throw Error("Choose a BongDrums "+expected+" v1 text file.");
+  if(!p||p.kind!=="BongDrums "+expected||p.version!==1&&!(expected==="Pattern"&&p.version===2))throw Error("Choose a BongDrums "+expected+" text file.");
   if(expected==="Pattern"){
     if(!bounded(p.bpm,60,200)||!bounded(p.swing,50,75)||!Array.isArray(p.banks)||p.banks.length!==2||
-      !p.banks.every(b=>Array.isArray(b)&&b.length===11&&b.every(r=>typeof r==="string"&&r.length===16&&/^[.xX]+$/.test(r))))
+      !p.banks.every(b=>Array.isArray(b)&&b.length===11&&b.every(r=>(p.version===1?typeof r==="string"&&r.length===16&&/^[.xX]+$/.test(r):Array.isArray(r)&&r.length===16&&r.every(c=>typeof c==="string"&&/^[.xX]{1,4}$/.test(c))))))
       throw Error("Pattern needs two banks of 11 rows × 16 steps, tempo 60–200, and swing 50–75.");
-    return {bpm:p.bpm,swing:p.swing,banks:p.banks.map(b=>b.map(r=>Array.from(r,c=>chars.indexOf(c))))};
+    return {bpm:p.bpm,swing:p.swing,banks:p.banks.map(b=>b.map(r=>Array.from(r,c=>packCell(Array.from(c,x=>chars.indexOf(x))))))};
   }
   if(p.voice!==voiceIds[pad-1])throw Error("This preset belongs to "+(voiceIds.includes(p.voice)?p.voice:"an unknown voice")+". Select the matching pad.");
   if(!bounded(p.recipe,0,probe.bd_recipe_count(pad)-1)||!Array.isArray(p.edits)||p.edits.length>256)throw Error("Invalid factory recipe or parameter list.");

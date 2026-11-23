@@ -6,8 +6,10 @@ enum { STEP_UNITS = KIT_RATE * 15 };
 
 void seq_bank_cell(Sequencer *s, int bank, int pad, int step, int state)
 {
-    if (pad < 1 || pad > SEQ_PADS || (unsigned)step >= SEQ_STEPS || (unsigned)state > 2)
+    if (pad < 1 || pad > SEQ_PADS || (unsigned)step >= SEQ_STEPS || (unsigned)bank > 1 || (unsigned)state > 119)
         return;
+    s->subcells[bank][pad-1][step] = state > 2 ? (uint8_t)state : 0;
+    if (state > 2) state = 0;
     uint16_t bit = (uint16_t)(1u << step);
     unsigned i = (unsigned)(pad - 1);
     uint16_t *h = bank ? s->hits_b : s->hits;
@@ -60,7 +62,10 @@ void seq_preset(Sequencer *s)
 
 void seq_clear(Sequencer *s)
 {
-    for (int pad = 0; pad < SEQ_PADS; ++pad) s->hits[pad] = s->accents[pad] = 0;
+    for (int pad = 0; pad < SEQ_PADS; ++pad) {
+        s->hits[pad] = s->accents[pad] = 0;
+        for (int step = 0; step < SEQ_STEPS; ++step) s->subcells[0][pad][step] = 0;
+    }
 }
 
 void seq_start(Sequencer *s)
@@ -128,13 +133,36 @@ unsigned seq_span(Sequencer *s, unsigned max_frames, uint16_t *hits, uint16_t *a
         const uint16_t *h = s->bank ? s->hits_b : s->hits;
         const uint16_t *a = s->bank ? s->accents_b : s->accents;
         uint16_t bit = (uint16_t)(1u << s->current_step);
-        for (int pad = 0; pad < SEQ_PADS; ++pad) {
+        for (int j = 0; j < 12; ++j) s->subhits[j] = s->subaccents[j] = 0;
+        s->next_sub = 0;
+        for (unsigned pad = 0; pad < SEQ_PADS; ++pad) {
             uint16_t lane = (uint16_t)(1u << pad);
-            if (h[pad] & bit) *hits |= lane;
-            if (a[pad] & bit) *accents |= lane;
+            unsigned v = s->subcells[s->bank][pad][s->current_step];
+            if (!v) {
+                if (h[pad] & bit) s->subhits[0] |= lane;
+                if (a[pad] & bit) s->subaccents[0] |= lane;
+            } else {
+                unsigned div = v < 12 ? 2 : v < 39 ? 3 : 4;
+                v -= div == 2 ? 3 : div == 3 ? 12 : 39;
+                for (unsigned j = 0; j < div; ++j, v /= 3) {
+                    unsigned slot = j * (12 / div);
+                    if (v % 3) s->subhits[slot] |= lane;
+                    if (v % 3 == 2) s->subaccents[slot] |= lane;
+                }
+            }
         }
     }
-    unsigned remaining = units - s->phase;
+    while (s->next_sub < 12) {
+        unsigned j = s->next_sub;
+        if (!s->subhits[j]) { ++s->next_sub; continue; }
+        unsigned mark = (units*j + 11u)/12u;
+        if (s->phase < mark) break;
+        *hits |= s->subhits[j];
+        *accents |= s->subaccents[j];
+        ++s->next_sub;
+    }
+    unsigned boundary = s->next_sub < 12 ? (units*s->next_sub + 11u)/12u : units;
+    unsigned remaining = boundary - s->phase;
     unsigned bpm = (unsigned)s->bpm;
     unsigned span = max_frames;
     /* Avoid a divide for ordinary callback spans that end before a boundary.

@@ -397,3 +397,9 @@ body.fx-off .plot-trace::after,body.fx-off .scope::after,body.fx-off .bus-scope:
 /* Drum strips only: the mixer no longer allocates space to spatial returns. */
 .mixer{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
 @media(max-width:640px){.lane-meter{right:calc(var(--u)*43)}}
+#substep-dialog{background:var(--screen,#230e1b);color:var(--cream,#ffe8b6);border:2px solid currentColor;padding:1rem;max-width:calc(100% - 1rem)}
+#substep-dialog::backdrop{background:#0009}
+#substep-title{font:inherit;margin:0 0 .8rem}
+#substep-count,#substep-cells{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.7rem}
+#substeps[aria-pressed=true],#substep-count [aria-pressed=true],#substep-cells [data-state="1"]{background:var(--blue,#55a0c9);color:#150c11}
+#substep-cells [data-state="2"]{background:var(--amber,#ffc05c);color:#150c11}

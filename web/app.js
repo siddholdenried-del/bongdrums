@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-import {exportPattern,exportPreset,parseFile,MAX_FILE,voiceIds} from "./files.js";
+import {validCell,packCell,unpackCell,exportPattern,exportPreset,parseFile,MAX_FILE,voiceIds} from "./files.js";
 import {boot,apply} from "./engine.js";
 import {kits,patterns,patternValues} from "./library.js";
 const $=id=>document.getElementById(id);
@@ -26,7 +26,7 @@ function setup(){
     const k=JSON.parse(localStorage.getItem(key))||JSON.parse(localStorage.getItem(oldKey));
     if(!k)return clean;
     clean.kit=-1;clean.loaded=[-1,-1];
-    const validRows=rows=>Array.isArray(rows)&&rows.length===11&&rows.every(row=>Array.isArray(row)&&row.length===16&&row.every(v=>bounded(v,0,2)));
+    const validRows=rows=>Array.isArray(rows)&&rows.length===11&&rows.every(row=>Array.isArray(row)&&row.length===16&&row.every(validCell));
     if(validRows(k.rows))clean.banks[0]=k.rows;
     if(Array.isArray(k.banks))for(let b=0;b<2;b++)if(validRows(k.banks[b]))clean.banks[b]=k.banks[b];
     if(bounded(k.playBank,0,1))clean.playBank=k.playBank;
@@ -234,7 +234,36 @@ function chooseBank(bank){
 
 /* ---------- grid ---------- */
 const stepText=["","","•"],stepWords=["off","hit","accent"];
-function refreshCell(p,n){const b=buttons[p][n],v=rows()[p][n];b.dataset.state=v;b.textContent=stepText[v];b.setAttribute("aria-label",names[p]+" step "+(n+1)+": "+stepWords[v]);}
+let subArmed=false;
+const subMode=on=>{subArmed=on;$("substeps").setAttribute("aria-pressed",String(on));};
+function subEditor(p,n){
+  subMode(false);
+  const dialog=$("substep-dialog"), counts=$("substep-count"), cells=$("substep-cells");
+  let hits=unpackCell(rows()[p][n]);
+  $("substep-title").textContent=names[p]+" · "+letters[state.editBank]+(n+1)+" · SUBSTEPS";
+  function draw(refocus){
+    counts.replaceChildren(...[1,2,3,4].map(count=>{
+      const b=make("button",String(count),{type:"button",class:"chunk","aria-label":count+" subdivisions","aria-pressed":String(hits.length===count)});
+      b.onclick=()=>{hits=Array.from({length:count},(_,i)=>hits[i]??0);draw(count);};return b;
+    }));
+    cells.replaceChildren(...hits.map((hit,i)=>{
+      const b=make("button",(i+1)+" "+stepWords[hit].toUpperCase(),{type:"button",class:"chunk","data-state":hit,"aria-label":"Substep "+(i+1)+": "+stepWords[hit]});
+      b.onclick=()=>{hits[i]=(hits[i]+1)%3;draw();cells.children[i].focus();};return b;
+    }));
+    if(refocus)counts.children[refocus-1].focus();
+  }
+  draw();
+  $("substep-apply").onclick=()=>{setCell(p,n,packCell(hits));dialog.close();};
+  $("substep-cancel").onclick=()=>dialog.close();
+  dialog.showModal();
+  dialog.onclose=()=>stepFocus(p,n);
+}
+function refreshCell(p,n){
+  const b=buttons[p][n],v=rows()[p][n],hits=unpackCell(v);
+  b.dataset.state=Math.max(...hits);b.textContent=hits.length===1?stepText[v]:String(hits.length);
+  b.setAttribute("aria-label",names[p]+" step "+(n+1)+": "+(hits.length===1?stepWords[v]:hits.length+" substeps, "+hits.map(x=>stepWords[x]).join(", ")));
+}
+const cycleCell=v=>v>2?0:(v+1)%3;
 function setCell(p,n,v){
   rows()[p][n]=v;refreshCell(p,n);send("cell",{bank:state.editBank,pad:p+1,step:n,value:v});
   if(state.loaded[state.editBank]!==-1){state.loaded[state.editBank]=-1;viewGroove();}persist();
@@ -259,7 +288,7 @@ function gridBuild(){
     for(let n=0;n<16;n++){
       const b=make("button",null,{type:"button",class:"step","data-pad":p,"data-step":n,"data-half":n<8?0:1,tabindex:(p===0&&n===0)?0:-1});place(b,n);
       b.style.setProperty("--r",String(p+2));b.style.setProperty("--pc",String(p+2));
-      b.addEventListener("click",e=>{if(e.detail===0)setCell(p,n,(rows()[p][n]+1)%3);});
+      b.addEventListener("click",e=>{if(e.detail===0){if(subArmed)subEditor(p,n);else setCell(p,n,cycleCell(rows()[p][n]));}});
       b.addEventListener("focus",()=>{buttons[focus[0]][focus[1]].tabIndex=-1;focus=[p,n];b.tabIndex=0;});
       buttons[p][n]=b;grid.append(b);refreshCell(p,n);
     }
@@ -267,7 +296,7 @@ function gridBuild(){
   let paint=null;
   grid.addEventListener("pointerdown",e=>{
     const b=e.target.closest(".step");if(!b||e.button>0)return;e.preventDefault();
-    const p=+b.dataset.pad,n=+b.dataset.step;paint=(rows()[p][n]+1)%3;setCell(p,n,paint);
+    const p=+b.dataset.pad,n=+b.dataset.step;if(subArmed){subEditor(p,n);return;}paint=cycleCell(rows()[p][n]);setCell(p,n,paint);
   });
   addEventListener("pointermove",e=>{
     if(paint===null)return;
@@ -278,6 +307,7 @@ function gridBuild(){
   grid.addEventListener("keydown",e=>{
     const b=e.target;if(!b.classList.contains("step"))return;
     let p=+b.dataset.pad,n=+b.dataset.step;
+    if(e.key==="Enter"&&e.shiftKey){e.preventDefault();subEditor(p,n);return;}
     const k=turned.matches?{ArrowUp:"ArrowLeft",ArrowDown:"ArrowRight",ArrowLeft:"ArrowUp",ArrowRight:"ArrowDown"}[e.key]||e.key:e.key;
     switch(k){case "ArrowUp":p=Math.max(0,p-1);break;case "ArrowDown":p=Math.min(10,p+1);break;case "ArrowRight":n=Math.min(15,n+1);break;case "ArrowLeft":n=Math.max(0,n-1);break;case "Home":n=0;break;case "End":n=15;break;default:return;}
     e.preventDefault();stepFocus(p,n);
@@ -734,13 +764,14 @@ try{
   };
   for(const b of document.querySelectorAll(".modes [data-tab]"))b.onclick=()=>showView(b.dataset.tab);
   for(const b of document.querySelectorAll("[data-lfo]"))b.onclick=()=>showLFO(+b.dataset.lfo);
+  $("substeps").onclick=()=>{subMode(!subArmed);if(subArmed)info.textContent="Choose a step to edit its subdivisions";};
   $("bench").onclick=runBench;document.addEventListener("visibilitychange",syncLaneMeters);
   $("fx-off").onchange=()=>setFx($("fx-off").checked);setFx(!!ui.fxOff);
   showView(ui.view);$("screen").classList.remove("fringe");
   playingBank=state.playBank;chooseBank(state.editBank);
   document.addEventListener("pointerdown",e=>{const m=$("menu");if(m.open&&!m.contains(e.target))m.open=false;});
   document.addEventListener("keydown",e=>{
-    if(e.metaKey||e.altKey||e.ctrlKey||!$("sheet").hidden)return;
+    if(e.metaKey||e.altKey||e.ctrlKey||!$("sheet").hidden||$("substep-dialog").open)return;
     const t=e.target;
     if(t.closest?.("select,textarea,[contenteditable]")||(t.tagName==="INPUT"&&t.type!=="range"&&t.type!=="checkbox"))return;
     if(e.key==="Escape"){$("menu").open=false;return;}
