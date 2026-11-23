@@ -167,43 +167,40 @@ body[data-view=mixer] .view[data-view=mixer],body[data-view=bus] .view[data-view
 .knobs{display:grid;justify-content:center;align-content:center;justify-items:center;gap:calc(var(--u)*5) calc(var(--u)*12);width:100%}
 .view[data-view=drum] .knobs,.view[data-view=bus] .knobs{flex:1 1 0;min-height:0}
 
-/* ---------- the desk: one drum, a screen, four knobs under its four columns ---------- */
+/* ---------- the desk: the plot is the main panel; the knobs are a compact strip under it ---------- */
 .view[data-view=drum]{justify-content:flex-start}
-.desk{--cols:repeat(4,minmax(0,1fr));--gapx:calc(var(--u)*3);width:min(100%,1020px);flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*4);
-  padding:calc(var(--u)*5);background:var(--felt);box-shadow:inset 0 0 0 var(--u) var(--ring),inset 0 0 0 calc(var(--u)*2) var(--felt),inset 0 0 0 calc(var(--u)*3) var(--ring),0 calc(var(--u)*2) 0 #050205}
-.desk-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:calc(var(--u)*3) calc(var(--u)*5)}
-.desk-top .drum-bar{flex:1;min-width:0}
-.preset-p{min-width:calc(var(--u)*13);min-height:calc(var(--u)*13);padding:0;font-size:var(--t-l);background:var(--felt-lo);color:var(--amber);box-shadow:inset 0 0 0 var(--u) var(--cream),0 calc(var(--u)*2) 0 var(--felt-lo)}
-.preset-p.custom{color:var(--cream);box-shadow:inset 0 0 0 var(--u) var(--amber),0 calc(var(--u)*2) 0 var(--felt-lo)}
-.crt-screen{position:relative;flex:1 1 0;min-height:calc(var(--u)*44);background:#10202A;box-shadow:inset 0 0 0 var(--u) var(--blue);overflow:hidden}
-.crt-screen canvas{position:absolute;inset:var(--u);width:calc(100% - var(--u)*2);height:calc(100% - var(--u)*2);image-rendering:pixelated;image-rendering:crisp-edges}
-.crt-top{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;gap:calc(var(--u)*4);padding:calc(var(--u)*3) calc(var(--u)*5);pointer-events:none}
-.crt-focus{display:flex;flex-direction:column;gap:var(--u);min-width:0}
-#lcd-label{font-size:var(--t-s);color:#8FC3E0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#lcd-value{font-size:var(--t-l);color:var(--amber);white-space:nowrap}
-.crt-status{display:flex;align-items:center;gap:calc(var(--u)*3);font-size:var(--t-s);color:#5D93B0;white-space:nowrap}
-.lcd-hit{width:calc(var(--u)*6);height:calc(var(--u)*6);background:#1F3A4A}
+.desk{width:min(100%,1180px);flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*3)}
+.desk-top{display:flex;align-items:center;justify-content:center;gap:calc(var(--u)*3)}
+.voice-pick{display:inline-flex;align-items:center;gap:calc(var(--u)*3);min-height:calc(var(--u)*13);padding:0 calc(var(--u)*4);border:0;cursor:pointer;
+  background:var(--felt-lo);color:var(--cream);box-shadow:inset 0 0 0 var(--u) var(--cream),0 calc(var(--u)*2) 0 var(--felt-lo)}
+.voice-pick h2{margin:0;font:700 var(--t-m)/1 var(--mono);letter-spacing:.06em;white-space:nowrap;min-width:12ch;text-align:left}
+.voice-pick i{font-style:normal;color:var(--amber)}
+.voice-pick:hover{background:var(--cell)}
+.plot{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;background:#10202A;box-shadow:inset 0 0 0 var(--u) var(--blue)}
+.readout{display:flex;align-items:baseline;gap:calc(var(--u)*4);padding:calc(var(--u)*2) calc(var(--u)*5);box-shadow:inset 0 calc(var(--u)*-1) 0 #1F3A4A;white-space:nowrap;min-width:0}
+.readout #lcd-label{font-size:var(--t-s);color:#8FC3E0;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.readout #lcd-value{font-size:var(--t-m);color:var(--amber)}
+.readout-gap{flex:1}
+.readout #crt-mode{font-size:var(--t-s);color:#5D93B0;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.lcd-hit{flex:none;width:calc(var(--u)*5);height:calc(var(--u)*5);background:#1F3A4A;align-self:center}
 .lcd-hit.on{animation:lcdhit .26s steps(3,end)}.lcd-hit.acc.on{animation:lcdacc .3s steps(3,end)}
 @keyframes lcdhit{from{background:var(--cream)}}@keyframes lcdacc{from{background:var(--amber)}}
-/* The bottom of the screen: one column per knob, on the same grid as the knobs below. */
-.crt-cols{position:absolute;left:calc(var(--u)*4);right:calc(var(--u)*4);bottom:calc(var(--u)*3);display:grid;grid-template-columns:var(--cols);column-gap:var(--gapx)}
-.crt-col{display:flex;flex-direction:column;gap:var(--u);min-width:0;padding:0 calc(var(--u)*2)}
-.crt-col span{font-size:var(--t-s);color:#8FC3E0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.crt-col b{display:block;height:calc(var(--u)*3);background:#1F3A4A;position:relative}
-.crt-col b::after{content:"";position:absolute;inset:0 auto 0 0;width:calc(var(--f,0) * 100%);background:var(--blue)}
-.crt-col.on span{color:var(--amber)}.crt-col.on b::after{background:var(--amber)}
-.crt-col.empty{opacity:.35}
+.plot-trace{position:relative;flex:1;min-height:0;margin:var(--u)}
+.plot-trace canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+/* Scanlines live inside the plots only, and stay faint. */
+.plot-trace::after,.scope::after,.bus-scope::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(180deg,#0000 0 2px,#00000038 2px 3px)}
 .page-bar{align-self:center}
-.page-bar .val{min-width:calc(9ch + var(--u)*8)}
+.page-bar .arrow{min-width:calc(var(--u)*18);font-size:var(--t-l)}
+.page-bar .val{min-width:12ch;font-size:var(--t-l);letter-spacing:.12em}
 .stepbar .arrow:disabled{opacity:.3;cursor:default;background:transparent}
-.desk-knobs{flex:1.6 1 0;min-height:0;display:grid;grid-template-columns:var(--cols);column-gap:var(--gapx)}
-.desk-knobs .knob{justify-content:center;padding:calc(var(--u)*3) var(--u);box-shadow:inset 0 0 0 var(--u) var(--edge);min-height:0}
-.desk-knobs .knob.on{box-shadow:inset 0 0 0 var(--u) var(--amber)}
+.desk-knobs{flex:none;display:flex;justify-content:center;align-items:stretch;gap:calc(var(--u)*6);height:clamp(110px,18dvh,140px)}
+/* Bottom-aligned: dials and values share one line; a longer label grows upward. */
+.desk-knobs .knob{width:clamp(78px,13vw,170px);gap:var(--u);justify-content:flex-end}
+.desk-knobs .knob .dial{width:var(--dial,60px)}
+.desk-knobs .knob .kl{font-size:17px;line-height:1.1;white-space:normal;max-width:100%;overflow-wrap:anywhere;color:var(--dim)}
+.desk-knobs .knob .kv{font-size:18px;color:var(--amber);white-space:nowrap}
 .desk-knobs .knob.on .kl{color:var(--amber)}
-.desk-knobs .knob .dial{width:var(--dial,96px)}
-.desk-knobs .knob .kl{white-space:normal;max-width:100%;overflow-wrap:anywhere;line-height:1.15;font-size:var(--t-s)}
-.desk-knobs .knob .kv{white-space:normal;max-width:100%;overflow-wrap:anywhere;color:var(--amber);font-size:var(--t-s)}
-.desk-knobs .knob.slot{opacity:.35}
+.desk-knobs .knob.on .face{stroke:var(--amber)}
 .lcd-pop{position:absolute;top:calc(var(--u)*2);left:50%;transform:translateX(-50%);z-index:6;display:none;flex-direction:column;align-items:center;gap:var(--u);
   min-width:calc(var(--u)*90);padding:calc(var(--u)*3) calc(var(--u)*6);background:#10202A;box-shadow:inset 0 0 0 var(--u) var(--blue),calc(var(--u)*3) calc(var(--u)*3) 0 #000;pointer-events:none}
 .lcd-pop.on{display:flex}
@@ -297,11 +294,7 @@ body.is-dry .view[data-view=bus] .knobs{opacity:.45}
 @keyframes fringe{from{opacity:1}to{opacity:0}}
 .fx-defs{position:absolute;width:0;height:0;overflow:hidden}
 body:not(.fx-off) .app{filter:url(#pixelate)}
-/* A 1 px dark scanline once per pixel block (every 3 px; every 4 px on phones). */
-.crt{--scan:calc(var(--u)*3);position:fixed;inset:0;z-index:40;pointer-events:none;
-  background:repeating-linear-gradient(180deg,#0000 0 calc(var(--scan) - 1px),#0a0206c0 calc(var(--scan) - 1px) var(--scan)),
-             linear-gradient(90deg,#dc453c10,#0000 30% 70%,#55a0c910)}
-body.fx-off .crt,body.fx-off .vhs{display:none}
+body.fx-off .vhs,body.fx-off .plot-trace::after,body.fx-off .scope::after,body.fx-off .bus-scope::after{display:none}
 body.fx-off .screen.fringe::after{display:none}
 @media (prefers-reduced-motion:reduce){
   .vhs .drift{animation:none}.vhs .track{display:none}.screen.fringe::after{display:none}
@@ -323,7 +316,6 @@ body.fx-off .screen.fringe::after{display:none}
 @media (max-width:640px){
   :root{--u:2px;--t-s:18px;--t-m:20px;--t-l:25px;--t-xl:34px;font-size:var(--t-s)}
   body:not(.fx-off) .app{filter:url(#pixelate-fine)}
-  .crt{--scan:4px}
   .app{padding:calc(var(--u)*4) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
   .bar{gap:calc(var(--u)*3)}
   .word{font-size:var(--t-s);letter-spacing:0}
@@ -345,13 +337,13 @@ body.fx-off .screen.fringe::after{display:none}
   .knobs{gap:calc(var(--u)*5) calc(var(--u)*8)}
   .gr{flex-wrap:wrap;justify-content:center;max-width:100%}.gr .meter{width:calc(var(--u)*14)}.gr output{min-width:0}
   .pick.wide{min-width:0;flex:1}.pick.small{min-width:calc(var(--u)*55)}
-  .desk{padding:calc(var(--u)*4);gap:calc(var(--u)*3);--gapx:calc(var(--u)*2)}
-  .desk-top{flex-wrap:wrap}.desk-top .drum-bar .drum-pick{width:auto}
-  .desk-top #audition{flex-basis:100%}
-  .desk-knobs{flex:0 0 auto}.desk-knobs .knob{min-height:0}
-  .crt-screen{min-height:calc(var(--u)*56)}.crt-col{padding:0}.crt-col span{font-size:13px}
-  .page-bar{align-self:stretch}.page-bar .val{flex:1}
-  .desk-knobs .knob .kl,.desk-knobs .knob .kv{font-size:14px}
+  .desk-top{justify-content:space-between;gap:calc(var(--u)*2)}.voice-pick{flex:1;min-width:0}.voice-pick h2{min-width:0}
+  .desk-top #audition{padding:0 calc(var(--u)*3)}
+  .readout{padding:var(--u) calc(var(--u)*3);gap:calc(var(--u)*3)}.readout #crt-mode{display:none}
+  .page-bar{align-self:stretch}.page-bar .val{flex:1;min-width:0}
+  .desk-knobs{gap:calc(var(--u)*2);height:auto;min-height:120px}
+  .desk-knobs .knob{width:auto;flex:1 1 0;min-width:0}
+  .desk-knobs .knob .kl{font-size:14px}.desk-knobs .knob .kv{font-size:15px}
   .lcd-pop{min-width:calc(100% - var(--u)*8)}
   .lfo-centre{grid-template-columns:1fr 1fr;grid-template-rows:minmax(110px,1fr) auto;gap:calc(var(--u)*6)}
   .lfo-centre .scope{grid-column:1/-1;grid-row:1;height:100%}

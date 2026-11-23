@@ -22,7 +22,6 @@
   <feFlood x="0" y="0" width="1" height="1"/><feComposite width="2" height="2"/><feTile result="grid"/>
   <feComposite in="lift" in2="grid" operator="in"/><feMorphology operator="dilate" radius="0.5"/>
 </filter></svg>
-<div class="crt" aria-hidden="true"></div>
 <div class="app">
 <header class="bar">
   <h1 class="word">BONGDRUMS</h1>
@@ -70,17 +69,17 @@
     <!-- The desk: one drum at a time, four knobs, a screen above them that follows what you touch. -->
     <div class="desk">
       <div class="desk-top">
-        <span class="stepbar drum-bar"><button type="button" class="arrow" id="voice-prev" aria-label="Previous drum">‹</button><button type="button" class="drum-pick" id="drum-pick" aria-haspopup="dialog" aria-label="Choose drum"><h2 id="sound-heading">01 KICK</h2><i aria-hidden="true">▾</i></button><button type="button" class="arrow" id="voice-next" aria-label="Next drum">›</button></span>
+        <button type="button" class="voice-pick" id="drum-pick" aria-haspopup="dialog" aria-label="Choose drum"><h2 id="sound-heading">01 KICK</h2><i aria-hidden="true">▾</i></button>
         <button type="button" class="chunk preset-p" id="preset-p" aria-haspopup="dialog" aria-label="Preset">P</button><select id="recipe" class="sr" tabindex="-1" aria-hidden="true"></select>
         <button id="audition" class="chunk blue" type="button">▶ AUDITION</button>
       </div>
-      <div class="crt-screen" id="lcd">
-        <canvas id="desk-crt" aria-hidden="true"></canvas>
-        <div class="crt-top"><span class="crt-focus"><span id="lcd-label">BODY TUNE</span><output id="lcd-value" aria-live="polite">52.0 HZ</output></span><span class="crt-status"><span id="crt-mode">808 ROUND</span><span class="lcd-hit" id="lcd-hit" aria-hidden="true"></span></span></div>
-        <div class="crt-cols" id="crt-cols" aria-hidden="true"></div>
+      <!-- The plot is the main panel; one thin readout above the trace. -->
+      <div class="plot" id="lcd">
+        <div class="readout"><span id="lcd-label">BODY TUNE</span><output id="lcd-value" aria-live="polite">52.0 HZ</output><span class="readout-gap"></span><span id="crt-mode">808 ROUND</span><span class="lcd-hit" id="lcd-hit" aria-hidden="true"></span></div>
+        <div class="plot-trace"><canvas id="desk-crt" aria-hidden="true"></canvas></div>
       </div>
-      <div class="stepbar page-bar" role="group" aria-label="Page"><button type="button" class="arrow" id="page-prev" aria-label="Previous page">‹</button><output class="val" id="page-val">PAGE 1/2</output><button type="button" class="arrow" id="page-next" aria-label="Next page">›</button></div>
-      <div class="desk-knobs" id="params" aria-label="Four parameter knobs"></div>
+      <div class="stepbar page-bar" role="group" aria-label="Page"><button type="button" class="arrow" id="page-prev" aria-label="Previous page">◀</button><output class="val" id="page-val">BODY</output><button type="button" class="arrow" id="page-next" aria-label="Next page">▶</button></div>
+      <div class="desk-knobs" id="params" aria-label="Knobs"></div>
     </div>
   </section>
 

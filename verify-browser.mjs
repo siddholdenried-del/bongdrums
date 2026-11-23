@@ -121,7 +121,9 @@ await js('document.querySelector("#play").click()');
 // Editors size their knobs to the space; the BUS scope draws the live output; mutes sit at the right.
 await call("Emulation.setDeviceMetricsOverride",{width:1280,height:720,deviceScaleFactor:1,mobile:false});await wait(200);
 await js(`document.querySelector('.modes [data-tab=drum]').click()`);await wait(120);
-assert.ok(await js('parseFloat(getComputedStyle(document.querySelector("#params .dial")).width)')>=90,"drum knobs fill their space");
+const lay=await js('(()=>{const p=document.querySelector(".plot").getBoundingClientRect(),k=document.getElementById("params").getBoundingClientRect();return [Math.round(p.height),Math.round(k.height)]})()');
+assert.ok(lay[0]>=240&&lay[1]>=100&&lay[1]<=145,"plot leads and the knob strip stays compact at 1280x720: "+JSON.stringify(lay));
+assert.equal(await js('new Set([...document.querySelectorAll("#params .dial")].map(d=>Math.round(d.getBoundingClientRect().bottom))).size'),1,"knob dials share one bottom line");
 await js(`document.querySelector('.modes [data-tab=sequence]').click()`);await wait(80);
 assert.deepEqual(await js('(()=>{const l=document.querySelector(".score .lane").getBoundingClientRect(),m=document.querySelector(".score .mute").getBoundingClientRect(),s=document.querySelector(".score .step[data-step=\'15\']").getBoundingClientRect();return [Math.abs(l.width-m.width)<1&&Math.abs(l.height-m.height)<1,m.left>s.right]})()'),[true,true],"audition and mute buttons match; mute is right of step 16");
 await js('document.querySelector("#play").click()');for(let i=0;i<30&&await js('document.querySelector("#status").textContent')!=="Playing";i++)await wait(50);
@@ -137,21 +139,21 @@ assert.match(await js('getComputedStyle(document.querySelector(".app")).filter')
 await js('(()=>{const f=document.getElementById("fx-off");f.checked=true;f.dispatchEvent(new Event("change"))})()');
 assert.equal(await js('getComputedStyle(document.querySelector(".app")).filter'),"none");
 await js('(()=>{const f=document.getElementById("fx-off");f.checked=false;f.dispatchEvent(new Event("change"))})()');
-// FM-1 style: at most four knobs per page, a page bar, a screen that follows what you touch, and pop-up readouts elsewhere.
-await js(`document.querySelector('.modes [data-tab=drum]').click();document.querySelector("#voice-tabs, #drum-pick");`);
-await js(`(()=>{const s=document.getElementById("voice-next");while(document.getElementById("sound-heading").textContent!=="01 KICK")s.click();})()`);
-assert.deepEqual(await js('[document.querySelectorAll("#params .knob").length,document.getElementById("page-val").textContent]'),[4,"PAGE 1/2"]);
-await js('document.getElementById("page-next").click()');
-assert.deepEqual(await js('[document.querySelectorAll("#params .knob").length,document.getElementById("page-val").textContent,document.querySelector("#params .knob .kl").textContent]'),[4,"PAGE 2/2","CLICK LEVEL"]);
-await js('(()=>{const i=document.querySelectorAll("#params .knob-input")[2];i.value=-400;i.dispatchEvent(new Event("input",{bubbles:true}))})()');
+// Named pages of up to four knobs; the readout follows what you touch; pop-up readouts elsewhere.
+await js(`document.querySelector('.modes [data-tab=drum]').click();document.body.dispatchEvent(new KeyboardEvent("keydown",{code:"KeyA",bubbles:true}))`);
+const page=()=>js('[document.getElementById("page-val").textContent,[...document.querySelectorAll("#params .knob .kl")].map(e=>e.textContent)]');
+assert.deepEqual(await page(),["BODY",["BODY TUNE","BODY DECAY","PITCH DROP AMOUNT","PITCH DROP TIME"]]);
+await js('document.getElementById("page-next").click()');assert.deepEqual(await page(),["TRANSIENT",["CLICK LEVEL","BODY DRIVE"]]);
+await js('document.getElementById("page-next").click()');assert.deepEqual(await page(),["FILTER",["TONE","DRIVE"]]);
+await js('(()=>{const i=document.querySelectorAll("#params .knob-input")[0];i.value=-400;i.dispatchEvent(new Event("input",{bubbles:true}))})()');
 assert.deepEqual(await js('[document.getElementById("lcd-label").textContent,document.getElementById("lcd-value").value]'),["TONE","DARK 40%"]);
-await js('document.getElementById("page-prev").click()');
+await js('document.getElementById("page-next").click()');assert.equal((await page())[0],"BODY");
 await js(`document.querySelector('.modes [data-tab=mixer]').click();(()=>{const f=document.getElementById("mix-level-2");f.value=60;f.dispatchEvent(new Event("input",{bubbles:true}))})()`);
 assert.deepEqual(await js('[document.getElementById("lcd-pop").classList.contains("on"),document.querySelector("#lcd-pop span").textContent]'),[true,"SD LEVEL"]);
 await js('document.querySelector("#play").click()');await js(`document.querySelector('.modes [data-tab=sequence]').click()`);
 console.log("Five views switch without stopping playback; return controls, knob fitting, scope, scrolling LFO, pixelation toggle and mute placement wired");
 // One-screen instrument: no page scroll at phone or desktop sizes.
-for(const [w,h] of [[320,568],[390,844],[1280,720],[1440,900]]){
+for(const [w,h] of [[320,568],[375,812],[390,844],[1280,720],[1440,900]]){
  await call("Emulation.setDeviceMetricsOverride",{width:w,height:h,deviceScaleFactor:1,mobile:w<760});await wait(250);
  for(const v of ["drum","lfo","mixer","bus","sequence"]){
   await js(`document.querySelector('.modes [data-tab=${v}]').click()`);
@@ -169,6 +171,6 @@ for(const [w,h] of [[320,568],[390,844],[1280,720],[1440,900]]){
  assert.equal(p.steps,176,"all 16 steps of all 11 drums on one screen at "+w);
  const s=await call("Page.captureScreenshot",{format:"png"});await writeFile(`BongDrums-${w}.png`,Buffer.from(s.data,"base64"));
 }
-console.log("No page scroll or clipped content in any view at 320x568, 390x844, 1280x720 and 1440x900; all 176 steps on one screen at every size");
+console.log("No page scroll or clipped content in any view at 320x568, 375x812, 390x844, 1280x720 and 1440x900; all 176 steps on one screen at every size");
 ws.close();
 }finally{proc.kill();}
