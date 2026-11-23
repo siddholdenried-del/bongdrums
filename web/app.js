@@ -305,36 +305,39 @@ function selectVoice(p){
   for(let n=0;n<patchStore.bd_recipe_count(p);n++)r.append(make("option",fromPtr(patchStore.bd_recipe_name(p,n)).toUpperCase(),{value:n}));
   recipeSelection(p);buildParams();
 }
-/* ---------- the desk: four knobs at a time, every setting on a page ---------- */
+/* ---------- the desk: named pages of up to four knobs ---------- */
+// Tone and Drive close every voice as FILTER; the voice's own settings come first, split where the sound splits.
+const PAGE_NAMES={1:["BODY","TRANSIENT"],2:["BODY","WIRES"],3:["BODY"],4:["BODY"],5:["BODY"],6:["BODY"],7:["METAL"],8:["METAL"],9:["METAL"],10:["OSC","SWEEP"],11:["OSC","SWEEP"]};
+const PAGE_SPLIT={1:4,2:3,10:4,11:4};
+function deskPages(p){
+  const n=patchStore.bd_params(p),voice=[...Array(n-2).keys()],split=PAGE_SPLIT[p]||4,names=PAGE_NAMES[p];
+  const pages=[];for(let i=0,j=0;i<voice.length;i+=split,j++)pages.push({name:names[Math.min(j,names.length-1)],ks:voice.slice(i,i+split)});
+  pages.push({name:"FILTER",ks:[n-2,n-1]});return pages;
+}
 const pageOf={};let deskFocus=0;
-function deskParams(p){return [...Array(patchStore.bd_params(p)).keys()];}
 function buildParams(){
-  const p=selected,area=$("params"),cols=$("crt-cols");area.replaceChildren();cols.replaceChildren();
+  const p=selected,area=$("params");area.replaceChildren();
   const defaults=scratch;defaults.bd_recipe(p,state.voices[p-1].recipe);
-  const all=deskParams(p),pages=Math.max(1,Math.ceil(all.length/4)),pg=Math.min(pageOf[p]||0,pages-1);pageOf[p]=pg;
-  $("page-val").textContent=`PAGE ${pg+1}/${pages}`;$("page-prev").disabled=$("page-next").disabled=pages<2;
+  const pages=deskPages(p),pg=Math.min(pageOf[p]||0,pages.length-1);pageOf[p]=pg;
+  $("page-val").textContent=pages[pg].name;
   const knobs=[];
   const refreshLocks=()=>knobs.forEach(([k,kn])=>{const off=!patchStore.bd_edit(p,k);kn.input.disabled=off;kn.classList.toggle("locked",off);});
   const changed=(k,value)=>{
     const edits=state.voices[p-1].edits;if(edits.at(-1)?.[0]===k)edits.pop();edits.push([k,value]);if(edits.length>256)edits.shift();
     send("param",{pad:p,index:k,value});recipeSelection(p);refreshLocks();markCustom();persist();
   };
-  for(let slot=0;slot<4;slot++){
-    const k=all[pg*4+slot],col=make("div",null,{class:"crt-col"});col.append(make("span",""),make("b",null));cols.append(col);
-    if(k===undefined){area.append(make("div",null,{class:"knob slot","aria-hidden":"true"}));continue;}
+  pages[pg].ks.forEach((k,slot)=>{
     const min=patchStore.bd_min(p,k),max=patchStore.bd_max(p,k),v=patchStore.bd_get(p,k),label=fromPtr(patchStore.bd_label(p,k));
     const option=!!patchStore.bd_option(p,k,min);
     const fmt=option?val=>fromPtr(patchStore.bd_option(p,k,val)).toUpperCase():val=>tickDisplay(p,k,val);
-    const kn=knob({id:"param-"+k,label,min,max,value:v,def:option?min:defaults.bd_get(p,k),fmt,onInput:value=>{if(patchStore.bd_set(p,k,value)){changed(k,value);deskColumn(slot);}},cls:option?"option":""});
-    kn.dataset.slot=slot;kn.dataset.kind=deskKind(label,option);col.querySelector("span").textContent=label.toUpperCase();
-    knobs.push([k,kn]);area.append(kn);
-  }
+    const kn=knob({id:"param-"+k,label,min,max,value:v,def:option?min:defaults.bd_get(p,k),fmt,onInput:value=>{if(patchStore.bd_set(p,k,value))changed(k,value);},cls:option?"option":""});
+    kn.dataset.slot=slot;kn.dataset.kind=deskKind(label,option);knobs.push([k,kn]);area.append(kn);
+  });
   refreshLocks();fitDesk();
-  deskFocus=Math.min(deskFocus,knobs.length-1);if(deskFocus<0)deskFocus=0;
-  for(let s=0;s<4;s++)deskColumn(s);
-  const f=area.querySelector(`.knob[data-slot="${deskFocus}"]`)||area.querySelector(".knob:not(.slot)");if(f)lcdShow(f.input,true);
+  if(deskFocus>=knobs.length)deskFocus=0;
+  const f=area.querySelector(`.knob[data-slot="${deskFocus}"]`);if(f)lcdShow(f.input,true);
 }
-// What graph the screen draws for a setting.
+// What graph the plot draws for a setting.
 function deskKind(label,option){
   const l=label.toUpperCase();
   if(option)return "steps";
@@ -345,22 +348,13 @@ function deskKind(label,option){
   if(/BRIGHT|COLOR|SNAPPY|WIRE|CLICK/.test(l))return "tilt";
   return "level";
 }
-function deskColumn(slot){
-  const col=$("crt-cols").children[slot],kn=$("params").querySelector(`.knob[data-slot="${slot}"]`);if(!col)return;
-  const on=slot===deskFocus&&kn&&!kn.classList.contains("slot");col.classList.toggle("on",on);kn?.classList.toggle("on",on);
-  const bar=col.querySelector("b");
-  if(!kn||kn.classList.contains("slot")){bar.style.setProperty("--f","0");col.classList.add("empty");return;}
-  const i=kn.input;bar.style.setProperty("--f",String((i.value-i.min)/(i.max-i.min||1)));
-}
-function turnPage(d){const n=Math.max(1,Math.ceil(deskParams(selected).length/4));pageOf[selected]=((pageOf[selected]||0)+d+n)%n;deskFocus=0;buildParams();}
-// Knob size from the room the desk has: four columns, one row.
+function deskMark(){for(const kn of $("params").querySelectorAll(".knob"))kn.classList.toggle("on",+kn.dataset.slot===deskFocus);}
+function turnPage(d){const n=deskPages(selected).length;pageOf[selected]=((pageOf[selected]||0)+d+n)%n;deskFocus=0;buildParams();}
+// The knob strip stays compact; the dial is sized from the strip's own height.
 function fitDesk(){
-  const box=$("params"),w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;
-  const u=unit(),gap=parseFloat(getComputedStyle(box).columnGap)||u*3,colW=(w-3*gap)/4;
-  // Room left in the tallest cell once its label, value, gaps and frame padding are counted.
-  let text=0;for(const k of box.querySelectorAll(".knob:not(.slot)"))text=Math.max(text,(k.querySelector(".kl")?.offsetHeight||0)+(k.querySelector(".kv")?.offsetHeight||0));
-  const auto=getComputedStyle(box).flexGrow==="0",room=auto?Infinity:h-text-u*14,size=Math.min(colW-u*6,room,190);
-  box.style.setProperty("--dial",Math.round(Math.max(40,size))+"px");
+  const box=$("params"),h=box.clientHeight;if(!h)return;
+  let text=0,w=1e9;for(const k of box.querySelectorAll(".knob")){text=Math.max(text,(k.querySelector(".kl")?.offsetHeight||0)+(k.querySelector(".kv")?.offsetHeight||0));w=Math.min(w,k.clientWidth);}
+  box.style.setProperty("--dial",Math.round(Math.max(40,Math.min(200,w-unit()*2,h-text-unit()*4)))+"px");
 }
 
 /* ---------- screens: what you touch, read back ---------- */
@@ -381,7 +375,7 @@ function lcdShow(el,quiet){
   const info=controlInfo(el);if(!info)return;
   const kn=el.closest?.("#params .knob");
   if(kn){
-    const prev=deskFocus;deskFocus=+kn.dataset.slot;if(prev!==deskFocus)deskColumn(prev);deskColumn(deskFocus);
+    deskFocus=+kn.dataset.slot;deskMark();
     $("lcd-label").textContent=info[0];$("lcd-value").value=info[1];return;
   }
   if(quiet)return;
@@ -391,7 +385,7 @@ function lcdShow(el,quiet){
 // The desk screen, one canvas pixel per block: grid, live output, and a graph of the touched setting.
 function drawDesk(){
   const c=$("desk-crt");if(!c.clientWidth)return;
-  const [g,w,h]=pixelCanvas(c),top=Math.round(h*.34),bot=Math.round(h*.72),mid=(top+bot)>>1,amp=(bot-top)/2;
+  const [g,w,h]=pixelCanvas(c),top=Math.round(h*.08),bot=Math.round(h*.92),mid=(top+bot)>>1,amp=(bot-top)/2;
   g.fillStyle="#10202A";g.fillRect(0,0,w,h);
   g.fillStyle="#18303D";for(let x=0;x<w;x+=Math.max(6,Math.round(w/16)))g.fillRect(x,0,1,h);for(let y=top;y<=bot;y+=Math.max(4,Math.round(amp/2)))g.fillRect(0,y,w,1);
   // live output, faint, behind the graph
@@ -707,8 +701,6 @@ try{
   $("groove").onchange=()=>loadPattern(+$("groove").value);
   $("groove-prev").onclick=()=>step(patterns.length,loadPattern,state.loaded[state.editBank],-1);
   $("groove-next").onclick=()=>step(patterns.length,loadPattern,state.loaded[state.editBank],1);
-  $("voice-prev").onclick=()=>selectVoice(selected===1?11:selected-1);
-  $("voice-next").onclick=()=>selectVoice(selected===11?1:selected+1);
   $("recipe").onchange=()=>{const v=+$("recipe").value;if(v<0)return;patchStore.bd_recipe(selected,v);state.voices[selected-1]={recipe:v,edits:[]};send("recipe",{pad:selected,value:v});markCustom();selectVoice(selected);persist();};
   $("audition").onclick=()=>audition(selected,0);$("play").onclick=toggle;$("rec").onclick=()=>setRec(!recording);
   $("tempo").value=state.bpm;
