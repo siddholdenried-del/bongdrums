@@ -55,5 +55,17 @@ for(const [width,height] of [[390,844],[1440,900]]){
 }
 await wait(250);await call('Page.reload');await wait(800);
 assert.equal(await js('document.querySelector(".step").textContent'),'3','split survives reload');
+await js("document.querySelector('.step').focus()");
+await call('Input.dispatchKeyEvent',{type:'rawKeyDown',code:'Enter',key:'Enter',windowsVirtualKeyCode:13,modifiers:8});
+await call('Input.dispatchKeyEvent',{type:'keyUp',code:'Enter',key:'Enter',windowsVirtualKeyCode:13,modifiers:8});
+assert.equal(await js("document.querySelector('dialog').open"),true);
+assert.match(await js("document.querySelector('#substep-cells button:nth-child(2)').getAttribute('aria-label')"),/^Substep 2: /);
+await call('Input.dispatchKeyEvent',{type:'rawKeyDown',code:'Escape',key:'Escape',windowsVirtualKeyCode:27});
+await call('Input.dispatchKeyEvent',{type:'keyUp',code:'Escape',key:'Escape',windowsVirtualKeyCode:27});
+assert.equal(await js("document.querySelector('dialog').open"),false);
+await js("document.querySelector('#bench').click()");
+for(let i=0;i<60&&!await js("document.querySelector('#dsp-load').value.includes('OFFLINE')");i++)await wait(150);
+assert.match(await js("document.querySelector('#dsp-load').value"),/% OF BUDGET · OFFLINE$/);
+console.log('Physical Shift+Enter, Escape and offline benchmark of split pattern passed.');
 console.log('Verified 390 touch / 1440 mouse, compact dialog, active audio, persisted split.');
 }finally{proc.kill();}
