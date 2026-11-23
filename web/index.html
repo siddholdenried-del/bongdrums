@@ -7,12 +7,20 @@
 </head>
 <body data-view="sequence">
 <div class="vhs" aria-hidden="true"><i class="drift"></i><i class="lines"></i><i class="track"></i><i class="vig"></i></div>
-<svg class="fx-defs" width="0" height="0" aria-hidden="true" focusable="false"><filter id="pixelate" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+<svg class="fx-defs" width="0" height="0" aria-hidden="true" focusable="false">
+<!-- Mosaic, not point sampling: soften to roughly one block, then keep one sample per block,
+     so strokes thinner than a block survive as dimmer blocks instead of dropping out. -->
+<filter id="pixelate" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+  <feGaussianBlur in="SourceGraphic" stdDeviation="0.9" result="soft"/>
+  <feComponentTransfer in="soft" result="lift"><feFuncR type="gamma" exponent="0.8"/><feFuncG type="gamma" exponent="0.8"/><feFuncB type="gamma" exponent="0.8"/></feComponentTransfer>
   <feFlood x="1" y="1" width="1" height="1"/><feComposite width="3" height="3"/><feTile result="grid"/>
-  <feComposite in="SourceGraphic" in2="grid" operator="in"/><feMorphology operator="dilate" radius="1"/>
-</filter><filter id="pixelate-fine" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+  <feComposite in="lift" in2="grid" operator="in"/><feMorphology operator="dilate" radius="1"/>
+</filter>
+<filter id="pixelate-fine" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+  <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" result="soft"/>
+  <feComponentTransfer in="soft" result="lift"><feFuncR type="gamma" exponent="0.85"/><feFuncG type="gamma" exponent="0.85"/><feFuncB type="gamma" exponent="0.85"/></feComponentTransfer>
   <feFlood x="0" y="0" width="1" height="1"/><feComposite width="2" height="2"/><feTile result="grid"/>
-  <feComposite in="SourceGraphic" in2="grid" operator="in"/><feMorphology operator="dilate" radius="0.5"/>
+  <feComposite in="lift" in2="grid" operator="in"/><feMorphology operator="dilate" radius="0.5"/>
 </filter></svg>
 <div class="crt" aria-hidden="true"></div>
 <div class="app">
@@ -38,34 +46,42 @@
       <section><h2>KEYS</h2><div class="keymap"><span><kbd>E</kbd><kbd>R</kbd><kbd>T</kbd> LT MT HT</span><span><kbd>U</kbd><kbd>I</kbd> P1 P2</span><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> BD SD CP</span><span><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> CH OH CY</span></div><p>SHIFT = ACCENT · 1–9 0 - = DRUMS IN ORDER · SPACE = PLAY/STOP · ENTER = REC. DRAG STEPS TO PAINT. DRAG KNOBS UP/DOWN (SHIFT = FINE), DOUBLE-CLICK TO RESET.</p></section>
       <section><h2>SHARE PATTERN</h2><div class="text-files" id="pattern-drop"><div class="file-actions"><button type="button" class="chunk" id="pattern-export">DOWNLOAD</button><label class="file-pick">CHOOSE OR DROP<input type="file" id="pattern-file" accept=".txt,text/plain"></label><button type="button" class="chunk" id="pattern-apply" disabled>APPLY</button></div><p id="pattern-notice" class="file-notice" role="status"></p></div></section>
       <section><h2>SHARE SELECTED DRUM</h2><div class="text-files" id="preset-drop"><div class="file-actions"><button type="button" class="chunk" id="preset-export">DOWNLOAD</button><label class="file-pick">CHOOSE OR DROP<input type="file" id="preset-file" accept=".txt,text/plain"></label><button type="button" class="chunk" id="preset-apply" disabled>APPLY</button></div><p id="preset-notice" class="file-notice" role="status"></p></div></section>
-      <section class="links"><a href="https://ghettomachine.bongcult.com/bongdrums/">ARCHITECTURE</a><a href="https://github.com/siddholdenried-del/bongdrums/archive/refs/tags/v0.4.1.zip">SOURCE CODE (GPLV3)</a><a href="https://bongcult.com/">BONGCULT</a><a href="https://tools.bongcult.com/">AUDIO TOOLS</a></section>
+      <section class="links"><a href="https://ghettomachine.bongcult.com/bongdrums/">ARCHITECTURE</a><a href="https://github.com/siddholdenried-del/bongdrums/archive/refs/tags/v0.4.2.zip">SOURCE CODE (GPLV3)</a><a href="https://bongcult.com/">BONGCULT</a><a href="https://tools.bongcult.com/">AUDIO TOOLS</a></section>
       <p class="credit">BONGDRUMS BY BONGSOFT · PROVIDED BY BONGTECH · PART OF BONGCULT</p>
     </div>
   </details>
 </header>
 
 <main class="screen" id="screen">
+  <div class="lcd-pop" id="lcd-pop" aria-hidden="true"><span></span><output></output></div>
   <section class="view" data-view="sequence" role="tabpanel" aria-label="Sequence">
     <div class="row seq-head">
+      <button type="button" class="chunk preset-p" id="kit-p" aria-haspopup="dialog" aria-label="Kit">P</button><select id="kit" class="sr" tabindex="-1" aria-hidden="true"></select>
       <div class="seg" role="group" aria-label="Edit pattern"><button type="button" data-pattern="0">A</button><button type="button" data-pattern="1">B</button></div>
       <button id="activate-bank" class="chunk" type="button">SET A LIVE</button>
       <span id="bank-readout" aria-live="polite">READY A</span>
       <div class="knob-slot" id="swing-slot"></div>
-      <div class="picker"><span class="tag" id="load-label">LOAD INTO A</span><button type="button" class="chunk nudge" id="groove-prev" aria-label="Previous pattern">‹</button><select id="groove" aria-label="Pattern preset"></select><button type="button" class="chunk nudge" id="groove-next" aria-label="Next pattern">›</button></div>
+      <div class="picker"><span class="tag" id="load-label">LOAD INTO A</span><span class="stepbar wide"><button type="button" class="arrow" id="groove-prev" aria-label="Previous pattern">‹</button><select id="groove" aria-label="Pattern preset"></select><button type="button" class="arrow" id="groove-next" aria-label="Next pattern">›</button></span></div>
     </div>
     <div class="score-wrap"><div class="score" id="score" role="group" aria-label="Drum lanes and steps. Tap to cycle off, hit, accent; drag to paint."></div></div>
   </section>
 
   <section class="view" data-view="drum" role="tabpanel" aria-label="Drum">
-    <div class="row kit-row"><div class="picker"><span class="tag">PRESET</span><select id="recipe" aria-label="Drum preset"></select></div><div class="picker"><span class="tag">KIT</span><button type="button" class="chunk nudge" id="kit-prev" aria-label="Previous kit">‹</button><select id="kit" aria-label="Kit preset"></select><button type="button" class="chunk nudge" id="kit-next" aria-label="Next kit">›</button></div></div>
-    <div class="voice-head">
-      <button type="button" class="chunk nudge" id="voice-prev" aria-label="Previous drum">‹</button>
-      <button type="button" class="drum-pick" id="drum-pick" aria-haspopup="dialog" aria-label="Choose drum"><h2 id="sound-heading">01 KICK</h2><i aria-hidden="true">▾</i></button>
-      <button type="button" class="chunk nudge" id="voice-next" aria-label="Next drum">›</button>
-      <button id="audition" class="chunk blue" type="button">AUDITION</button>
+    <!-- The desk: one drum at a time, four knobs, a screen above them that follows what you touch. -->
+    <div class="desk">
+      <div class="desk-top">
+        <span class="stepbar drum-bar"><button type="button" class="arrow" id="voice-prev" aria-label="Previous drum">‹</button><button type="button" class="drum-pick" id="drum-pick" aria-haspopup="dialog" aria-label="Choose drum"><h2 id="sound-heading">01 KICK</h2><i aria-hidden="true">▾</i></button><button type="button" class="arrow" id="voice-next" aria-label="Next drum">›</button></span>
+        <button type="button" class="chunk preset-p" id="preset-p" aria-haspopup="dialog" aria-label="Preset">P</button><select id="recipe" class="sr" tabindex="-1" aria-hidden="true"></select>
+        <button id="audition" class="chunk blue" type="button">▶ AUDITION</button>
+      </div>
+      <div class="crt-screen" id="lcd">
+        <canvas id="desk-crt" aria-hidden="true"></canvas>
+        <div class="crt-top"><span class="crt-focus"><span id="lcd-label">BODY TUNE</span><output id="lcd-value" aria-live="polite">52.0 HZ</output></span><span class="crt-status"><span id="crt-mode">808 ROUND</span><span class="lcd-hit" id="lcd-hit" aria-hidden="true"></span></span></div>
+        <div class="crt-cols" id="crt-cols" aria-hidden="true"></div>
+      </div>
+      <div class="stepbar page-bar" role="group" aria-label="Page"><button type="button" class="arrow" id="page-prev" aria-label="Previous page">‹</button><output class="val" id="page-val">PAGE 1/2</output><button type="button" class="arrow" id="page-next" aria-label="Next page">›</button></div>
+      <div class="desk-knobs" id="params" aria-label="Four parameter knobs"></div>
     </div>
-    <div class="choices" id="choices"></div>
-    <div class="knobs big" id="params"></div>
   </section>
 
   <section class="view" data-view="lfo" role="tabpanel" aria-label="LFO">

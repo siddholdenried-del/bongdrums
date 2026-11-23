@@ -69,9 +69,9 @@ const fromPtr=p=>{if(!p)return "";const v=new Uint8Array(patchStore.memory.buffe
 const turned=matchMedia("(max-width:640px) and (orientation:portrait)");
 
 /* ---------- knob: a real range input drives a drawn dial ---------- */
-const DIAL=`<svg viewBox="0 0 48 48"><g class="ticks"><line x1="24" y1="1.5" x2="24" y2="7"/><line x1="24" y1="41" x2="24" y2="46.5"/><line x1="1.5" y1="24" x2="7" y2="24"/><line x1="41" y1="24" x2="46.5" y2="24"/></g><circle class="face" cx="24" cy="24" r="18.5"/><path class="fill"/><line class="ptr" x1="24" y1="24" x2="24" y2="10"/></svg>`;
-const polar=a=>{const r=(a-90)*Math.PI/180;return [24+18.5*Math.cos(r),24+18.5*Math.sin(r)];};
-const arc=(a0,a1)=>{if(Math.abs(a1-a0)<.5)return "";const [x0,y0]=polar(Math.min(a0,a1)),[x1,y1]=polar(Math.max(a0,a1));return `M${x0.toFixed(2)} ${y0.toFixed(2)}A18.5 18.5 0 ${Math.abs(a1-a0)>180?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;};
+const DIAL=`<svg viewBox="0 0 48 48"><g class="ticks"><line x1="9.50" y1="38.50" x2="7.38" y2="40.62"/><line x1="4.50" y1="30.33" x2="1.65" y2="31.26"/><line x1="3.75" y1="20.79" x2="0.79" y2="20.32"/><line x1="7.42" y1="11.95" x2="4.99" y2="10.19"/><line x1="14.69" y1="5.73" x2="13.33" y2="3.06"/><line x1="24.00" y1="3.50" x2="24.00" y2="0.50"/><line x1="33.31" y1="5.73" x2="34.67" y2="3.06"/><line x1="40.58" y1="11.95" x2="43.01" y2="10.19"/><line x1="44.25" y1="20.79" x2="47.21" y2="20.32"/><line x1="43.50" y1="30.33" x2="46.35" y2="31.26"/><line x1="38.50" y1="38.50" x2="40.62" y2="40.62"/></g><circle class="face" cx="24" cy="24" r="17.5"/><path class="fill"/><line class="ptr" x1="24" y1="24" x2="24" y2="10"/></svg>`;
+const polar=a=>{const r=(a-90)*Math.PI/180;return [24+17.5*Math.cos(r),24+17.5*Math.sin(r)];};
+const arc=(a0,a1)=>{if(Math.abs(a1-a0)<.5)return "";const [x0,y0]=polar(Math.min(a0,a1)),[x1,y1]=polar(Math.max(a0,a1));return `M${x0.toFixed(2)} ${y0.toFixed(2)}A17.5 17.5 0 ${Math.abs(a1-a0)>180?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;};
 function knob({id,label,min,max,value,def=value,fmt=String,onInput,cls=""}){
   const wrap=make("div",null,{class:"knob "+cls});
   const input=make("input",null,{type:"range",id,min,max,step:1,class:"knob-input"});input.value=value;
@@ -110,10 +110,10 @@ function fitKnobs(box){
   const cs=getComputedStyle(box),gx=parseFloat(cs.columnGap)||16,gy=parseFloat(cs.rowGap)||12,extra=ks.some(k=>k.querySelector(".gr"))?18:0;
   let best=0,cols=n;
   for(let r=1;r<=n;r++){const c=Math.ceil(n/r);const size=Math.min((w-(c-1)*gx)/c/1.12,((h-(r-1)*gy)/r-extra-16)/1.62);if(size>best){best=size;cols=c;}}
-  box.style.setProperty("--dial",Math.round(Math.max(38,Math.min(200,best)))+"px");box.style.gridTemplateColumns=`repeat(${cols},auto)`;
+  box.style.setProperty("--dial",Math.round(Math.max(38,Math.min(200,best)))+"px");box.style.gridTemplateColumns=`repeat(${cols},minmax(0,1fr))`;
 }
 function fitCentre(box){const w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;box.style.setProperty("--dial",Math.round(Math.max(46,Math.min(170,(h-40)/1.6,w*.17)))+"px");}
-const fitter=new ResizeObserver(es=>es.forEach(e=>e.target.classList.contains("lfo-centre")?fitCentre(e.target):fitKnobs(e.target)));
+const fitter=new ResizeObserver(es=>es.forEach(e=>e.target.id==="params"?fitDesk():e.target.classList.contains("lfo-centre")?fitCentre(e.target):fitKnobs(e.target)));
 /* Tile sheet: one big grid of choices instead of a native dropdown. */
 let sheetReturn=null;
 function openSheet(title,items,current,onPick,cols,from){
@@ -138,11 +138,36 @@ function pickerFor(sel,{title,cols=3,label=o=>o.text,sub=()=>"",cls=""}){
   sel.addEventListener("change",sync);new MutationObserver(sync).observe(sel,{childList:true,subtree:true,attributes:true});
   sel.sync=sync;sync();return b;
 }
-/* chunky segmented buttons */
-function segment(host,labels,value,onPick,{label="",cls=""}={}){
+/* One framed bar for every arrow control: ‹ | selection | ›. */
+function stepBar(middle,prev,next,label){
+  const bar=make("div",null,{class:"stepbar",role:"group"});if(label)bar.setAttribute("aria-label",label);
+  const a=make("button","‹",{type:"button",class:"arrow","aria-label":"Previous "+(label||"").toLowerCase()}),b=make("button","›",{type:"button",class:"arrow","aria-label":"Next "+(label||"").toLowerCase()});
+  a.onclick=prev;b.onclick=next;bar.append(a,middle,b);return bar;
+}
+/* Choices by count: more than three → a stepper bar; exactly three → a three-notch slider; two → a switch. */
+function segment(host,labels,value,onPick,opts={}){
+  if(labels.length>3)return stepper(host,labels,value,onPick,opts);
+  if(labels.length===3)return slide3(host,labels,value,onPick,opts);
+  const {label="",cls=""}=opts;
   host.replaceChildren();host.className="seg "+cls;host.setAttribute("role","group");if(label)host.setAttribute("aria-label",label);
   const bs=labels.map((t,i)=>{const b=make("button",t,{type:"button","aria-pressed":String(i===value)});b.onclick=()=>{bs.forEach((x,j)=>x.setAttribute("aria-pressed",String(j===i)));onPick(i);};host.append(b);return b;});
   host.set=v=>bs.forEach((x,j)=>x.setAttribute("aria-pressed",String(j===v)));return host;
+}
+function stepper(host,labels,value,onPick,{label="",cls=""}={}){
+  host.replaceChildren();host.className="stepper "+cls;host.removeAttribute("role");
+  let cur=value;
+  const out=make("output",labels[cur]??"—",{class:"val","aria-live":"polite"});
+  out.style.setProperty("--w",Math.max(...labels.map(l=>l.length))+"ch");   // fixed width: the arrows never move
+  const go=d=>{cur=((cur<0?0:cur)+d+labels.length)%labels.length;out.value=labels[cur];onPick(cur);};
+  host.append(stepBar(out,()=>go(-1),()=>go(1),label));
+  host.set=v=>{cur=v;out.value=labels[v]??"—";};return host;
+}
+function slide3(host,labels,value,onPick,{label="",cls=""}={}){
+  host.replaceChildren();host.className="slide3 "+cls;host.setAttribute("role","radiogroup");if(label)host.setAttribute("aria-label",label);
+  const set=v=>{host.dataset.pos=v;bs.forEach((x,j)=>{x.setAttribute("aria-checked",String(j===v));x.tabIndex=j===v?0:-1;});};
+  const bs=labels.map((t,i)=>{const b=make("button",null,{type:"button",role:"radio"});b.append(make("i"),make("span",t));b.onclick=()=>{set(i);onPick(i);};host.append(b);return b;});
+  host.onkeydown=e=>{const d={ArrowLeft:-1,ArrowRight:1,ArrowUp:1,ArrowDown:-1}[e.key];if(!d)return;e.preventDefault();const v=Math.max(0,Math.min(2,+host.dataset.pos+d));set(v);onPick(v);bs[v].focus();};
+  set(value);host.set=set;return host;
 }
 const pct=v=>v+"%";
 const levelText=v=>v===0?"OFF":v===100?"0 dB":(40*Math.log10(v/100)).toFixed(1)+" dB";
@@ -151,7 +176,10 @@ const returnText=v=>v===0?"OFF":(20*Math.log10(.8*v/85)).toFixed(1)+" dB";
 
 /* ---------- kit / pattern library ---------- */
 function markCustom(){if(state.kit!==-1){state.kit=-1;viewKit();}}
-function viewKit(){const s=$("kit");s.querySelector("option[value='-1']").hidden=state.kit!==-1;s.value=String(state.kit);s.sync?.();}
+function viewKit(){
+  const s=$("kit");s.querySelector("option[value='-1']").hidden=state.kit!==-1;s.value=String(state.kit);
+  const name=s.selectedOptions[0]?.text||"";$("kit-p").title="Kit: "+name;$("kit-p").setAttribute("aria-label","Kit: "+name);$("kit-p").classList.toggle("custom",state.kit===-1);
+}
 function viewGroove(){const s=$("groove"),v=state.loaded[state.editBank];s.querySelector("option[value='-1']").hidden=v!==-1;s.value=String(v);s.sync?.();}
 function applyKit(i){
   const k=kits[i];
@@ -259,7 +287,11 @@ function gridBuild(){
 }
 
 /* ---------- drum view ---------- */
-function recipeSelection(p){const v=patchStore.bd_match(p),s=$("recipe");s.querySelector("option[value='-1']").hidden=v!==-1;s.value=String(v);s.sync?.();}
+function recipeSelection(p){
+  const v=patchStore.bd_match(p),s=$("recipe");s.querySelector("option[value='-1']").hidden=v!==-1;s.value=String(v);
+  const name=v<0?"CUSTOM":s.selectedOptions[0]?.text||"";$("crt-mode").textContent=name;
+  $("preset-p").title="Preset: "+name;$("preset-p").setAttribute("aria-label","Preset: "+name);$("preset-p").classList.toggle("custom",v<0);
+}
 function tickDisplay(p,k,v){
   const d=patchStore.bd_decimals(p,k),unit=fromPtr(patchStore.bd_unit(p,k)),label=fromPtr(patchStore.bd_label(p,k));
   if(label==="Tone")return v===0?"FLAT":(v<0?"DARK ":"THIN ")+Math.round(Math.abs(v)/10)+"%";
@@ -273,30 +305,114 @@ function selectVoice(p){
   for(let n=0;n<patchStore.bd_recipe_count(p);n++)r.append(make("option",fromPtr(patchStore.bd_recipe_name(p,n)).toUpperCase(),{value:n}));
   recipeSelection(p);buildParams();
 }
+/* ---------- the desk: four knobs at a time, every setting on a page ---------- */
+const pageOf={};let deskFocus=0;
+function deskParams(p){return [...Array(patchStore.bd_params(p)).keys()];}
 function buildParams(){
-  const p=selected,area=$("params"),choices=$("choices");area.replaceChildren();choices.replaceChildren();
+  const p=selected,area=$("params"),cols=$("crt-cols");area.replaceChildren();cols.replaceChildren();
   const defaults=scratch;defaults.bd_recipe(p,state.voices[p-1].recipe);
+  const all=deskParams(p),pages=Math.max(1,Math.ceil(all.length/4)),pg=Math.min(pageOf[p]||0,pages-1);pageOf[p]=pg;
+  $("page-val").textContent=`PAGE ${pg+1}/${pages}`;$("page-prev").disabled=$("page-next").disabled=pages<2;
   const knobs=[];
   const refreshLocks=()=>knobs.forEach(([k,kn])=>{const off=!patchStore.bd_edit(p,k);kn.input.disabled=off;kn.classList.toggle("locked",off);});
   const changed=(k,value)=>{
     const edits=state.voices[p-1].edits;if(edits.at(-1)?.[0]===k)edits.pop();edits.push([k,value]);if(edits.length>256)edits.shift();
     send("param",{pad:p,index:k,value});recipeSelection(p);refreshLocks();markCustom();persist();
   };
-  for(let k=0;k<patchStore.bd_params(p);k++){
+  for(let slot=0;slot<4;slot++){
+    const k=all[pg*4+slot],col=make("div",null,{class:"crt-col"});col.append(make("span",""),make("b",null));cols.append(col);
+    if(k===undefined){area.append(make("div",null,{class:"knob slot","aria-hidden":"true"}));continue;}
     const min=patchStore.bd_min(p,k),max=patchStore.bd_max(p,k),v=patchStore.bd_get(p,k),label=fromPtr(patchStore.bd_label(p,k));
-    if(patchStore.bd_option(p,k,min)){
-      const box=make("div",null,{class:"choice"}),seg=make("div");
-      const opts=[];for(let i=min;i<=max;i++)opts.push(fromPtr(patchStore.bd_option(p,k,i)).toUpperCase());
-      segment(seg,opts,v-min,i=>{if(patchStore.bd_set(p,k,i+min))changed(k,i+min);},{label});
-      seg.id="param-"+k;box.append(make("span",label.toUpperCase(),{class:"tag"}),seg);choices.append(box);
-    }else{
-      const kn=knob({id:"param-"+k,label,min,max,value:v,def:defaults.bd_get(p,k),fmt:val=>tickDisplay(p,k,val),onInput:value=>{if(patchStore.bd_set(p,k,value))changed(k,value);}});
-      knobs.push([k,kn]);area.append(kn);
-    }
+    const option=!!patchStore.bd_option(p,k,min);
+    const fmt=option?val=>fromPtr(patchStore.bd_option(p,k,val)).toUpperCase():val=>tickDisplay(p,k,val);
+    const kn=knob({id:"param-"+k,label,min,max,value:v,def:option?min:defaults.bd_get(p,k),fmt,onInput:value=>{if(patchStore.bd_set(p,k,value)){changed(k,value);deskColumn(slot);}},cls:option?"option":""});
+    kn.dataset.slot=slot;kn.dataset.kind=deskKind(label,option);col.querySelector("span").textContent=label.toUpperCase();
+    knobs.push([k,kn]);area.append(kn);
   }
-  refreshLocks();fitKnobs(area);
+  refreshLocks();fitDesk();
+  deskFocus=Math.min(deskFocus,knobs.length-1);if(deskFocus<0)deskFocus=0;
+  for(let s=0;s<4;s++)deskColumn(s);
+  const f=area.querySelector(`.knob[data-slot="${deskFocus}"]`)||area.querySelector(".knob:not(.slot)");if(f)lcdShow(f.input,true);
+}
+// What graph the screen draws for a setting.
+function deskKind(label,option){
+  const l=label.toUpperCase();
+  if(option)return "steps";
+  if(/^TONE$/.test(l))return "filter";
+  if(/DRIVE/.test(l))return "drive";
+  if(/DECAY|TAIL|TIME/.test(l))return "envelope";
+  if(/TUNE|PITCH|SWEEP|SPEED/.test(l))return "pitch";
+  if(/BRIGHT|COLOR|SNAPPY|WIRE|CLICK/.test(l))return "tilt";
+  return "level";
+}
+function deskColumn(slot){
+  const col=$("crt-cols").children[slot],kn=$("params").querySelector(`.knob[data-slot="${slot}"]`);if(!col)return;
+  const on=slot===deskFocus&&kn&&!kn.classList.contains("slot");col.classList.toggle("on",on);kn?.classList.toggle("on",on);
+  const bar=col.querySelector("b");
+  if(!kn||kn.classList.contains("slot")){bar.style.setProperty("--f","0");col.classList.add("empty");return;}
+  const i=kn.input;bar.style.setProperty("--f",String((i.value-i.min)/(i.max-i.min||1)));
+}
+function turnPage(d){const n=Math.max(1,Math.ceil(deskParams(selected).length/4));pageOf[selected]=((pageOf[selected]||0)+d+n)%n;deskFocus=0;buildParams();}
+// Knob size from the room the desk has: four columns, one row.
+function fitDesk(){
+  const box=$("params"),w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;
+  const u=unit(),gap=parseFloat(getComputedStyle(box).columnGap)||u*3,colW=(w-3*gap)/4;
+  // Room left in the tallest cell once its label, value, gaps and frame padding are counted.
+  let text=0;for(const k of box.querySelectorAll(".knob:not(.slot)"))text=Math.max(text,(k.querySelector(".kl")?.offsetHeight||0)+(k.querySelector(".kv")?.offsetHeight||0));
+  const auto=getComputedStyle(box).flexGrow==="0",room=auto?Infinity:h-text-u*14,size=Math.min(colW-u*6,room,190);
+  box.style.setProperty("--dial",Math.round(Math.max(40,size))+"px");
 }
 
+/* ---------- screens: what you touch, read back ---------- */
+function controlInfo(el){
+  if(!el?.closest)return null;
+  const strip=el.closest(".strip"),pre=strip?.querySelector(".strip-name")?.textContent;
+  const k=el.closest(".knob");
+  if(k&&!k.classList.contains("slot"))return [(pre?pre+" ":"")+k.querySelector(".kl").textContent,k.querySelector(".kv").value];
+  if(el.classList.contains("fader"))return [(pre||"")+(strip?.classList.contains("return")?" RETURN":" LEVEL"),strip?.querySelector(".read")?.value||el.value];
+  const st=el.closest(".stepper");
+  if(st)return [(st.closest(".field,.choice")?.querySelector(".tag")?.textContent||st.querySelector(".stepbar")?.getAttribute("aria-label")||"").toUpperCase(),st.querySelector(".val").value];
+  const sl=el.closest(".slide3,.seg");
+  if(sl){const on=sl.querySelector("[aria-checked=true],[aria-pressed=true]");return [(sl.closest(".field,.choice")?.querySelector(".tag")?.textContent||sl.getAttribute("aria-label")||"").toUpperCase(),on?.textContent||""];}
+  return null;
+}
+let lcdHit={p:0,t:-1e9,acc:false},popTimer=0;
+function lcdShow(el,quiet){
+  const info=controlInfo(el);if(!info)return;
+  const kn=el.closest?.("#params .knob");
+  if(kn){
+    const prev=deskFocus;deskFocus=+kn.dataset.slot;if(prev!==deskFocus)deskColumn(prev);deskColumn(deskFocus);
+    $("lcd-label").textContent=info[0];$("lcd-value").value=info[1];return;
+  }
+  if(quiet)return;
+  const pop=$("lcd-pop");pop.querySelector("span").textContent=info[0];pop.querySelector("output").value=info[1];
+  pop.classList.add("on");clearTimeout(popTimer);popTimer=setTimeout(()=>pop.classList.remove("on"),1300);
+}
+// The desk screen, one canvas pixel per block: grid, live output, and a graph of the touched setting.
+function drawDesk(){
+  const c=$("desk-crt");if(!c.clientWidth)return;
+  const [g,w,h]=pixelCanvas(c),top=Math.round(h*.34),bot=Math.round(h*.72),mid=(top+bot)>>1,amp=(bot-top)/2;
+  g.fillStyle="#10202A";g.fillRect(0,0,w,h);
+  g.fillStyle="#18303D";for(let x=0;x<w;x+=Math.max(6,Math.round(w/16)))g.fillRect(x,0,1,h);for(let y=top;y<=bot;y+=Math.max(4,Math.round(amp/2)))g.fillRect(0,y,w,1);
+  // live output, faint, behind the graph
+  if(analyser&&ctx?.state==="running"){
+    if(!scopeBuf)scopeBuf=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(scopeBuf);
+    const ys=[];for(let x=0;x<w;x++)ys.push(mid-Math.max(-1,Math.min(1,scopeBuf[Math.floor(x*1024/w)]*1.6))*amp);plot(g,ys,"#2F6C8E",1);
+  }
+  const kn=$("params").querySelector(`.knob[data-slot="${deskFocus}"]`);if(!kn||kn.classList.contains("slot"))return;
+  const i=kn.input,lo=+i.min,hi=+i.max,v=+i.value,f=(v-lo)/(hi-lo||1),kind=kn.dataset.kind,ys=[];
+  const age=performance.now()-lcdHit.t,hit=lcdHit.p===selected?Math.exp(-age/200):0,col=hit>.5?COL.cream:COL.amber;
+  if(kind==="steps"){const n=hi-lo+1,bw=Math.floor((w-(n+1)*3)/n);for(let s=0;s<n;s++){g.fillStyle=s===v-lo?COL.amber:"#1F3A4A";g.fillRect(3+s*(bw+3),top+2,bw,bot-top-4);}return;}
+  for(let x=0;x<w;x++){const t=x/(w-1);let y;
+    if(kind==="envelope")y=Math.exp(-t/(.03+.9*f));
+    else if(kind==="pitch")y=Math.sin(2*Math.PI*t*(2+12*f))*Math.exp(-t*1.5);
+    else if(kind==="drive"){const gg=1+9*f;y=Math.tanh(gg*(2*t-1))/Math.tanh(gg);}
+    else if(kind==="filter"){const b=v/(hi||1);y=b<0?(t<1+b*.85?1:Math.max(-1,1-(t-(1+b*.85))*8)):(t<b*.85?Math.min(1,-1+t/(b*.85+1e-6)*2):1);}
+    else if(kind==="tilt")y=(1-2*t)*(1-2*f)*-1;
+    else y=t<f?1:-1;
+    ys.push(mid-y*amp*(kind==="envelope"?2:1)+(kind==="envelope"?amp:0));}
+  plot(g,ys,col);
+}
 /* ---------- mixer view ---------- */
 function buildMixer(){
   const area=$("mixer");
@@ -331,14 +447,23 @@ function buildMixer(){
   });
 }
 
+/* ---------- pixel displays: one canvas pixel per VHS block ---------- */
+const unit=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--u"))||3;
+function pixelCanvas(c){
+  const u=unit(),w=Math.max(8,Math.floor(c.clientWidth/u)),h=Math.max(8,Math.floor(c.clientHeight/u));
+  if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+  return [c.getContext("2d"),w,h];
+}
+// A connected one-pixel line: each column fills from the previous row to its own.
+function plot(g,ys,color,thick=2){
+  g.fillStyle=color;let prev=null;
+  for(let x=0;x<ys.length;x++){const y=Math.round(ys[x]),a=prev===null?y:Math.min(prev,y),b=prev===null?y:Math.max(prev,y);g.fillRect(x,a,1,b-a+thick);prev=y;}
+}
+const COL={well:"#1A0A14",edge:"#5E3D51",cream:"#FFE8B6",blue:"#55A0C9",amber:"#FFC05C",read:"#7A5A68"};
+
 /* ---------- LFO view ---------- */
 const lfoDraw=[];
 const lfoY=(wave,ph)=>{if(wave===1)return 1-4*Math.abs(ph-.5);const y=Math.sin(2*Math.PI*ph);return wave===2?2*Math.min(1,Math.max(0,.5+2*y))-1:y;};
-// The read point is fixed at the centre; the wave scrolls through it (two cycles across the display).
-function wavePath(wave,depth,phase=0){
-  const pts=[];for(let i=0;i<=160;i++){const ph=((phase+(i/160-.5)*2)%1+1)%1;pts.push([i/160*320,60-lfoY(wave,ph)*48*(.15+.85*depth/100)]);}
-  return "M"+pts.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join("L");
-}
 function buildLFOs(){
   for(let i=0;i<2;i++){
     const spec=state.lfos[i],slot=make("div",null,{class:"lfo-slot","data-slot":i});
@@ -365,9 +490,11 @@ function buildLFOs(){
     const tf=field("TARGET",target);tf.append(targetSeg);tf.classList.add("wide");
     route.append(field("DRUM",drum),tf,field("SHAPE",shape),field("CLOCK",clock));
     pickerFor(drum,{title:"LFO "+(i+1)+" DRUM",cols:4,label:o=>o.text,sub:o=>+o.value?names[o.value-1].toUpperCase():"NO TARGET"});
+    { const pick=drum.nextElementSibling,stepDrum=d=>{drum.value=String((+drum.value+d+12)%12);drum.dispatchEvent(new Event("change"));};
+      const bar=stepBar(pick,()=>stepDrum(-1),()=>stepDrum(1),"Drum");drum.after(bar);bar.prepend(drum);bar.querySelector(".arrow").after(drum);}
     const scope=make("div",null,{class:"scope"});
-    scope.innerHTML=`<svg viewBox="0 0 320 120" preserveAspectRatio="none" aria-hidden="true"><line class="axis" x1="0" y1="60" x2="320" y2="60"/><path class="wave"/><line class="read" x1="160" y1="4" x2="160" y2="116"/><circle class="dot" cx="160" r="5"/></svg><span class="scope-label"></span>`;
-    const wave=scope.querySelector(".wave"),dot=scope.querySelector(".dot"),slabel=scope.querySelector(".scope-label");
+    scope.innerHTML=`<canvas aria-hidden="true"></canvas><span class="scope-label"></span>`;
+    const canvas=scope.querySelector("canvas"),slabel=scope.querySelector(".scope-label");
     const divs=["2 BARS","1 BAR","1/2","1/4","1/8","1/16","1/32"];
     const cycle=knob({id:"lfo-"+i+"-div",label:"RATE",min:0,max:6,value:spec.div,def:3,fmt:v=>divs[v],onInput:v=>update("div",v)});
     const hz=knob({id:"lfo-"+i+"-hz",label:"RATE",min:5,max:1200,value:spec.hz,def:100,fmt:v=>(v/100).toFixed(2)+" HZ",onInput:v=>update("hz",v)});
@@ -383,10 +510,19 @@ function buildLFOs(){
     redraw();
     // Cycles per second, as the engine counts them: sync = cycles per 8 beats, free = hz/100.
     const cps=()=>spec.sync?state.bpm/60*[1,2,4,8,16,32,64][spec.div]/8:spec.hz/100;
+    // The read column is fixed at the centre; two cycles scroll through it.
     lfoDraw[i]=()=>{
+      if(!canvas.clientWidth)return;
       const ph=(lfoPhase[i]>>>0)/4294967296+(ctx&&lfoAt?cps()*(performance.now()-lfoAt)/1000:0);
-      wave.setAttribute("d",wavePath(spec.wave,spec.depth,ph));
-      dot.setAttribute("cy",(60-lfoY(spec.wave,((ph%1)+1)%1)*48*(.15+.85*spec.depth/100)).toFixed(1));
+      const [g,w,h]=pixelCanvas(canvas),mid=Math.floor(w/2),amp=(h/2-4)*(.15+.85*spec.depth/100),y0=Math.floor(h/2);
+      g.fillStyle=COL.well;g.fillRect(0,0,w,h);
+      g.fillStyle=COL.edge;g.fillRect(0,y0,w,1);
+      g.fillStyle=COL.read;g.fillRect(mid,0,1,h);
+      const ys=[];for(let x=0;x<w;x++)ys.push(y0-lfoY(spec.wave,(((ph+(x/w-.5)*2)%1)+1)%1)*amp);
+      plot(g,ys,spec.lane&&spec.depth?COL.blue:COL.edge);
+      const yd=Math.round(y0-lfoY(spec.wave,((ph%1)+1)%1)*amp);
+      g.fillStyle=COL.amber;g.fillRect(mid-2,yd-2,5,5);
+      canvas.dataset.read=String(mid);canvas.dataset.value=String(yd);canvas.dataset.phase=(((ph%1)+1)%1).toFixed(4);
     };
     lfoDraw[i]();
     slot.append(route,centre);$("lfo-controls").append(slot);fitter.observe(centre);
@@ -396,7 +532,7 @@ function buildLFOs(){
 function showLFO(i){lfoShown=i;$("lfo-controls").dataset.show=i;for(const b of document.querySelectorAll("[data-lfo]"))b.setAttribute("aria-pressed",String(+b.dataset.lfo===i));ui.lfo=i;saveUI();}
 
 /* ---------- playing it ---------- */
-function flash(p,accent){const el=lanes[p-1];if(!el)return;el.classList.remove("hit","acc");void el.offsetWidth;el.classList.add("hit");if(accent)el.classList.add("acc");}
+function flash(p,accent){lcdHit={p,t:performance.now(),acc:!!accent};if(p===selected){const l=$("lcd-hit");l.classList.remove("on","acc");void l.offsetWidth;l.classList.add("on");if(accent)l.classList.add("acc");}const el=lanes[p-1];if(!el)return;el.classList.remove("hit","acc");void el.offsetWidth;el.classList.add("hit");if(accent)el.classList.add("acc");}
 async function hitPad(p,accent){
   if(p!==selected)selectVoice(p);flash(p,accent);
   if(!await enableAudio())return;
@@ -419,7 +555,7 @@ function showView(t){
   document.body.dataset.view=t;ui.view=t;saveUI();
   for(const b of document.querySelectorAll(".modes [data-tab]"))b.setAttribute("aria-selected",String(b.dataset.tab===t));
   // Size the knobs of the view now shown at once, without waiting for a resize callback.
-  if(t==="drum")fitKnobs($("params"));else if(t==="bus")fitKnobs($("macros"));else if(t==="lfo")document.querySelectorAll(".lfo-centre").forEach(fitCentre);
+  if(t==="drum")fitDesk();else if(t==="bus")fitKnobs($("macros"));else if(t==="lfo")document.querySelectorAll(".lfo-centre").forEach(fitCentre);
   if(changed){const s=$("screen");s.classList.remove("fringe");void s.offsetWidth;s.classList.add("fringe");}
 }
 
@@ -464,17 +600,18 @@ let outBar,analyser,scopeBuf;const grBars=[];
 function drawScope(){
   requestAnimationFrame(drawScope);
   if(document.body.dataset.view==="lfo"&&!document.hidden)lfoDraw[lfoShown]?.();
+  if(document.body.dataset.view==="drum"&&!document.hidden)drawDesk();
   if(document.body.dataset.view!=="bus"||document.hidden)return;
-  const c=$("bus-scope"),g=c.getContext("2d"),dpr=devicePixelRatio||1,w=Math.round(c.clientWidth*dpr),h=Math.round(c.clientHeight*dpr);
-  if(!w||!h)return;if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
-  const plain=document.body.classList.contains("fx-off");
-  g.shadowBlur=0;g.fillStyle=plain?"#1A0A14":"rgba(26,10,20,.32)";g.fillRect(0,0,w,h);
-  g.strokeStyle="#5A3A4D";g.lineWidth=dpr;g.setLineDash([4*dpr,4*dpr]);g.beginPath();g.moveTo(0,h/2);g.lineTo(w,h/2);g.stroke();g.setLineDash([]);
+  const c=$("bus-scope");if(!c.clientWidth)return;
+  const [g,w,h]=pixelCanvas(c),y0=Math.floor(h/2),plain=document.body.classList.contains("fx-off");
+  // Phosphor: fade the last frame a little instead of clearing it (cleared outright with FX off).
+  g.fillStyle=plain?COL.well:"rgba(26,10,20,.38)";g.fillRect(0,0,w,h);
+  g.fillStyle=COL.edge;g.fillRect(0,y0,w,1);
   if(!analyser)return;
   if(!scopeBuf)scopeBuf=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(scopeBuf);
   const N=1024;let start=0;for(let i=1;i<scopeBuf.length-N;i++)if(scopeBuf[i-1]<=0&&scopeBuf[i]>0){start=i;break;}
-  g.strokeStyle="#55A0C9";g.lineWidth=2*dpr;if(!plain){g.shadowColor="#55A0C9";g.shadowBlur=8*dpr;}
-  g.beginPath();for(let i=0;i<N;i++){const y=h/2-Math.max(-1,Math.min(1,scopeBuf[start+i]*1.4))*h*.44;i?g.lineTo(i/(N-1)*w,y):g.moveTo(0,y);}g.stroke();
+  const ys=[];for(let x=0;x<w;x++)ys.push(y0-Math.max(-1,Math.min(1,scopeBuf[start+Math.floor(x*N/w)]*1.4))*(h/2-2));
+  plot(g,ys,COL.blue);
 }
 async function enableAudio(){
   if(ctx?.state==="running"&&port)return true;
@@ -531,11 +668,18 @@ try{
   outBar=$("out-bar");
   for(const [id,list,custom] of [["kit",kits,"CUSTOM KIT"],["groove",patterns,"EDITED PATTERN"]]){const sel=$(id);sel.append(make("option",custom,{value:-1,disabled:""}));list.forEach((x,i)=>sel.append(make("option",x.name.toUpperCase(),{value:i})));}
   gridBuild();buildMixer();buildLFOs();
-  pickerFor($("kit"),{title:"KIT",cols:3,cls:"wide"});
-  pickerFor($("recipe"),{title:"DRUM PRESET",cols:3,cls:"small"});
+  // P on the sequencer: the factory kits as a tile sheet.
+  $("kit-p").onclick=()=>{const k=$("kit");openSheet("KIT",[...k.options].filter(o=>!o.disabled).map(o=>({value:o.value,label:o.text})),k.value,v=>{k.value=v;k.dispatchEvent(new Event("change"));},3,$("kit-p"));};
+  // P: the drum's presets as a tile sheet, opened from beside the drum title.
+  $("preset-p").onclick=()=>{const r=$("recipe");openSheet("PRESET · "+names[selected-1].toUpperCase(),[...r.options].filter(o=>!o.disabled).map(o=>({value:o.value,label:o.text})),r.value,v=>{r.value=v;r.dispatchEvent(new Event("change"));},3,$("preset-p"));};
   pickerFor($("groove"),{title:"PATTERN · LOADS INTO THE EDIT BANK",cols:4,cls:"wide",sub:o=>{const p=patterns[+o.value];return p&&p.bpm?p.bpm+" BPM · SWING "+p.swing+"%":""}});
   $("drum-pick").onclick=()=>openSheet("DRUM",names.map((n,i)=>({value:i+1,label:String(i+1).padStart(2,"0")+" "+short[i],sub:n.toUpperCase()})),selected,v=>selectVoice(+v),4,$("drum-pick"));
   $("sheet-close").onclick=closeSheet;
+  $("page-prev").onclick=()=>turnPage(-1);$("page-next").onclick=()=>turnPage(1);
+  const scr=$("screen");
+  scr.addEventListener("input",e=>lcdShow(e.target));
+  scr.addEventListener("focusin",e=>{if(e.target.classList.contains("knob-input"))lcdShow(e.target,document.body.dataset.view!=="drum");});
+  scr.addEventListener("click",e=>{if(e.target.closest(".stepper,.slide3,.seg"))queueMicrotask(()=>lcdShow(e.target));});
   $("sheet").addEventListener("pointerdown",e=>{if(e.target.id==="sheet")closeSheet();});
   $("sheet").addEventListener("keydown",e=>{
     if(e.key==="Escape"){e.preventDefault();closeSheet();return;}
@@ -560,8 +704,6 @@ try{
   viewKit();
   $("kit").onchange=()=>applyKit(+$("kit").value);
   const step=(count,applyFn,current,d)=>applyFn(((Math.max(current,0)+(current<0&&d>0?0:d))%count+count)%count);
-  $("kit-prev").onclick=()=>step(kits.length,applyKit,state.kit,-1);
-  $("kit-next").onclick=()=>step(kits.length,applyKit,state.kit,1);
   $("groove").onchange=()=>loadPattern(+$("groove").value);
   $("groove-prev").onclick=()=>step(patterns.length,loadPattern,state.loaded[state.editBank],-1);
   $("groove-next").onclick=()=>step(patterns.length,loadPattern,state.loaded[state.editBank],1);
