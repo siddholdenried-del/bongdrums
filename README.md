@@ -71,3 +71,9 @@ Saved kit send and return fields are retained as inactive legacy data. Browser b
 In SEQ, click **SUB** then select a drum cell, or focus a cell and press **Shift+Enter**. Pick 2, 3, or 4 subdivisions and cycle each through **OFF**, **HIT**, and **ACCENT**. **APPLY** saves the result; **1** restores an ordinary step. Split cells show their subdivision count. The first subdivision can be off for late-only hits. Edits apply the next time the sequencer reaches that cell.
 
 Substeps divide the actual swung duration of the parent step, without changing tempo or the A/B bar boundary. Patterns without subdivisions still export as v1; split patterns export as v2. Both are importable here; older builds cannot open v2 patterns.
+
+`firmware-engine.json` records the exact FM-1 source snapshot and file hashes.
+The browser retains the first 57 legacy per-pad recipe entries so existing
+kits and shared text files retain their original parameter selections. New
+FM-1 recipes are appended, with their measured gain trims. The browser mixer
+and drum bus are still standalone, so their final output need not match the FM-1.

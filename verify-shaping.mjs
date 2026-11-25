@@ -5,9 +5,10 @@ const x=boot(new WebAssembly.Module(readFileSync("web/bongdrums.wasm")));
 const str=p=>{if(!p)return "";const v=new Uint8Array(x.memory.buffer);let e=p;while(v[e])e++;return Buffer.from(v.subarray(p,e)).toString();};
 const knobs=[];
 for(let p=1;p<=11;p++){let n=0;const labels=[];for(let k=0;k<x.bd_params(p);k++){if(!str(x.bd_option(p,k,x.bd_min(p,k)))){n++;labels.push(str(x.bd_label(p,k)));}}knobs.push(n);assert.ok(n>=4,`pad ${p} has ${n} knobs`);
-  assert.deepEqual(labels.slice(-2),["Tone","Drive"]);}
+  assert.ok(labels.includes("Tone")&&labels.includes("Drive"));}
 console.log("Knobs per drum:",knobs.join(" "));
-const toneIdx=p=>x.bd_params(p)-2,driveIdx=p=>x.bd_params(p)-1;
+const paramIdx=(p,name)=>Array.from({length:x.bd_params(p)},(_,i)=>str(x.bd_label(p,i))).indexOf(name);
+const toneIdx=p=>paramIdx(p,"Tone"),driveIdx=p=>paramIdx(p,"Drive");
 const render=(pad,setup)=>{x.bd_init();x.bd_dry(1);setup();x.bd_hit(pad,1);const out=[];for(let i=0;i<120;i++){x.bd_render(128);out.push(...new Float32Array(x.memory.buffer,x.bd_left(),128));}return Float32Array.from(out);};
 const diff=(a,b)=>a.reduce((m,v,i)=>Math.max(m,Math.abs(v-b[i])),0);
 const rms=a=>Math.sqrt(a.reduce((s,v)=>s+v*v,0)/a.length);

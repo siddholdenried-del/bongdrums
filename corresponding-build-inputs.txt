@@ -26,3 +26,9 @@ experiments/original-kit/shells.h
 experiments/original-kit/station.c
 experiments/original-kit/station.h
 experiments/original-kit/stock_tables/x0x_drum_tables.h
+
+legacy-catalog.h
+
+experiments/original-kit/freestanding.h
+
+experiments/original-kit/levels.inc

@@ -1,11 +1,17 @@
 #include "station.h"
 #include "presets.h"
+#include "legacy-catalog.h"
+#include "fastmath.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
 static Station s;
+static int selected_recipe[11];
+static const int16_t firmware_trim[11][KIT_MAX_RECIPES]={
+#include "levels.inc"
+};
 static float left[256],right[256];
-void bd_init(void){station_init(&s);}
+void bd_init(void){station_init(&s);memset(selected_recipe,0,sizeof(selected_recipe));}
 void bd_start(void){station_start(&s);}
 void bd_stop(void){station_stop(&s);}
 void bd_tempo(int bpm){KitPattern p={.bpm=bpm};for(unsigned i=0;i<11;i++){p.hits[i]=s.clock.hits[i];p.accents[i]=s.clock.accents[i];}station_set_pattern(&s,&p);}
@@ -55,10 +61,39 @@ void bd_meter_lanes(int enabled){bd_clear_lane_peaks();s.bus.meter_lanes=!!enabl
 #endif
 float bd_comp(void){return s.comp_gr_db;}
 float bd_limit(void){return s.limiter_gr_db;}
-int bd_recipe(int p,int r){return p>0&&p<=11?kit_preset_apply(&s.patch[p-1],p,r):0;}
-int bd_recipe_count(int p){return kit_preset_count(p);}
-const char *bd_recipe_name(int p,int r){return kit_preset_name(p,r);}
-int bd_match(int p){return p>0&&p<=11?kit_preset_match(&s.patch[p-1],p):-1;}
+static int browser_recipe(KitPatch *patch,int pad,int id){
+    if(pad<1||pad>11||id<0)return 0;
+    const int idx=pad-1,n=old_count[idx];
+    if(id>=n)return kit_preset_apply(patch,pad,id-n);
+    kit_preset_apply(patch,pad,0);
+    for(int k=pad>=10?1:0;k<kit_param_count(pad);++k)
+        kit_param_set(patch,pad,k,k<old_params[idx]?legacy[idx][id].ticks[k]:0);
+    if(pad>=10)kit_param_set(patch,pad,0,legacy[idx][id].ticks[0]);
+    return 1;
+}
+int bd_recipe(int p,int r){
+    if(p<1||p>11||!browser_recipe(&s.patch[p-1],p,r))return 0;
+    const int id=r-old_count[p-1];
+    s.recipe_gain[p-1]=id>=0 && id<KIT_MAX_RECIPES ?
+        fm_exp2f((float)firmware_trim[p-1][id]*(.1f*.16609640474f)) : 1.f;
+    selected_recipe[p-1]=r;
+    return 1;
+}
+int bd_recipe_count(int p){return p>0&&p<=11?old_count[p-1]+kit_preset_count(p):0;}
+const char *bd_recipe_name(int p,int r){
+    if(p<1||p>11||r<0)return NULL;
+    const int n=old_count[p-1];
+    return r<n?legacy[p-1][r].name:kit_preset_name(p,r-n);
+}
+int bd_match(int p){
+    if(p<1||p>11)return -1;
+    const int idx=p-1,id=selected_recipe[idx],n=kit_param_count(p);
+    KitPatch candidate=s.patch[idx];
+    if(!browser_recipe(&candidate,p,id))return -1;
+    for(int k=0;k<n;++k)
+        if(kit_param_get(&candidate,p,k)!=kit_param_get(&s.patch[idx],p,k))return -1;
+    return id;
+}
 int bd_params(int p){return kit_param_count(p);}
 const char *bd_label(int p,int k){const KitParamSpec *x=kit_param_spec(p,k);return x?x->label:NULL;}
 const char *bd_unit(int p,int k){const KitParamSpec *x=kit_param_spec(p,k);return x?x->unit:NULL;}
