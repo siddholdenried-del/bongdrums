@@ -15,4 +15,6 @@ cc -O2 -std=c11 -ffp-contract=off -DPLAT_HOST -DDRUM_BUS_NO_SPATIAL -I"$E" -I"$R
 ./mix.tmp
 node verify-core.mjs
 node verify-firmware-catalog.mjs
+node verify-catalog-contract.mjs
+node --test test-catalog-contract.mjs
 node verify-shaping.mjs

@@ -77,3 +77,8 @@ The browser retains the first 57 legacy per-pad recipe entries so existing
 kits and shared text files retain their original parameter selections. New
 FM-1 recipes are appended, with their measured gain trims. The browser mixer
 and drum bus are still standalone, so their final output need not match the FM-1.
+
+The browser release tests also pin the recipe IDs, edit slots and option
+values in `catalog-contract.json`. Extend the contract for new IDs and slots
+before releasing them. Do not reorder or replace existing entries just to
+make CI green: make an explicit saved-format migration first.
