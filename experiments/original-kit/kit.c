@@ -1,5 +1,5 @@
+#include "freestanding.h"
 #include "kit.h"
-#include <string.h>
 
 KickPatch kit_kick_preset(int which)
 {
@@ -33,14 +33,15 @@ KitPatch kit_default_patch(void)
     p.snare_tune = 0.47f; p.snare_body = 0.55f;
     p.snare_snappy = 0.60f; p.snare_wire = 0.46f;
     p.clap_spread = 0.46f; p.clap_tone = 0.54f; p.clap_tail = 0.48f;
-    p.perc[0] = (PercPatch){0, 0.59f, 0.44f, 0.78f, -0.88f, 0.82f};
-    p.perc[1] = (PercPatch){4, 0.68f, 0.42f, 0.55f,  0.18f, 0.50f};
+    /* (the Electro and Techno recipes, presets.c: model | filter << 4 | reso << 8) */
+    p.perc[0] = (PercPatch){6 | 640 << 8, 0.44f, 0.40f, 0.90f, -0.82f, 0.80f};
+    p.perc[1] = (PercPatch){4 | 1 << 4 | 560 << 8, 0.68f, 0.42f, 0.70f,  0.18f, 0.50f};
     return p;
 }
 
 void kit_init(Kit *kit)
 {
-    memset(kit, 0, sizeof(*kit));
+    V3_CLEAR(kit, 0, sizeof(*kit));
     shells_init(&kit->shells);
     metal_init(&kit->metal);
     perc_init(&kit->perc[0]);
@@ -75,7 +76,7 @@ void kit_render(Kit *kit, float *out, unsigned frames)
 {
     while (frames) {
         unsigned n = frames > KIT_BLOCK ? KIT_BLOCK : frames;
-        memset(out, 0, n * sizeof(*out));
+        V3_CLEAR(out, 0, n * sizeof(*out));
         shells_render(&kit->shells, out, n);
         metal_render(&kit->metal, out, n);
         perc_render(&kit->perc[0], out, n);
@@ -99,7 +100,7 @@ static void render_lanes(Kit *kit, float *lanes[KIT_PADS], unsigned n)
 void kit_lanes(Kit *kit, float *lanes[KIT_PADS], unsigned n)
 {
     for (unsigned pad = 0; pad < KIT_PADS; ++pad)
-        memset(lanes[pad], 0, n * sizeof(float));
+        V3_CLEAR(lanes[pad], 0, n * sizeof(float));
     render_lanes(kit, lanes, n);
 }
 
@@ -117,7 +118,7 @@ void kit_render_active_lanes(Kit *kit, float storage[KIT_PADS][KIT_BLOCK],
     for (unsigned pad = 0; pad < KIT_PADS; ++pad) {
         if (active & (1u << pad)) {
             lanes[pad] = storage[pad];
-            memset(lanes[pad], 0, n * sizeof(float));
+            V3_CLEAR(lanes[pad], 0, n * sizeof(float));
         } else {
             lanes[pad] = NULL;
         }

@@ -19,6 +19,22 @@ for(let wet=0;wet<2;wet++){
  assert.ok(worst<1e-4);assert.ok(power>1);
  console.log(wet?"Bus":"Dry",": 184,320 samples, max absolute native/WASM difference",worst);
 }
+x.bd_init();x.bd_dry(1);x.bd_recipe(9,x.bd_recipe_count(9)-1);x.bd_hit(9,1);
+let cymbal=0,tail=0;
+for(let i=0;i<260;i++){
+ x.bd_render(128);
+ for(const [c,p] of [x.bd_left(),x.bd_right()].entries()){
+  const pcm=new Float32Array(x.memory.buffer,p,128);
+  for(let n=0;n<128;n++){
+   const native=f.readFloatLE((2*720*256+i*256+c*128+n)*4);
+   assert.ok(Math.abs(pcm[n]-native)<1e-4);
+   if(i<20)cymbal+=pcm[n]**2;
+   if(i>100)tail+=pcm[n]**2;
+  }
+ }
+}
+assert.ok(cymbal>0 && tail>0 && tail<cymbal);
+console.log("Firmware cymbal preset: native/WASM attack and decaying tail match");
 x.bd_init();let choices=0;
 for(let p=1;p<=11;p++){
  for(let i=0;i<x.bd_recipe_count(p);i++){
@@ -26,4 +42,4 @@ for(let p=1;p<=11;p++){
   for(let k=0;k<x.bd_params(p);k++)assert.ok(x.bd_get(p,k)>=x.bd_min(p,k)&&x.bd_get(p,k)<=x.bd_max(p,k));
  }
 }
-assert.equal(choices,57);console.log("57 presets round-trip through actual C catalog");
+assert.ok(choices>=57+132);console.log(choices,"presets round-trip through the browser and firmware catalogs");

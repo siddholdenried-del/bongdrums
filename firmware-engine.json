@@ -1,0 +1,20 @@
+{
+  "commit": "31fccda0321f403bab914f7f094e4f38e7a906d1",
+  "files": {
+    "experiments/original-kit/freestanding.h": "25fa233dfbf3b5e5eb81f036bb4ae96a7b2b2223fad81194385237e6d8a4122e",
+    "experiments/original-kit/kit.c": "c5cf8f8c87482ce4a42c484ceac46d9ee8e1eb24bb97a180cff7041c2e9e8b46",
+    "experiments/original-kit/kit.h": "b0ef5aa8f1c49476fd7b8a535ca5c4d1651140bfdb55f1f44cabd2931ffed1fd",
+    "experiments/original-kit/kit_math.c": "8bae051825267fcffd99777d41027fe8e02805fe98f18da21c9c93ca4fe6fa2f",
+    "experiments/original-kit/kit_math.h": "c03a56010965768ba4abc5b540f4765317dcbda8a704e797482a3b41a373218f",
+    "experiments/original-kit/kit_patch.h": "12d4a1a1dd7c62697303e269d48643310f25f3812d59217b9303ef01c649ef60",
+    "experiments/original-kit/levels.inc": "e8ac9ec7c69849b57c45745c3957d85aaaa01727378103d7f4b3f3ea229df149",
+    "experiments/original-kit/metal.c": "8f8ab7dcc5b7361e1436e6a768bdb185999aafd976bf97ed18c0c11ed06049bc",
+    "experiments/original-kit/metal.h": "9ecdaef360d535196b053c5604e463bae02891a3424d703f1798144c27f00fda",
+    "experiments/original-kit/perc.c": "a4489a7415fd8befdc7dbfddd23900593de81305d06d667da25ff8583e5c5760",
+    "experiments/original-kit/perc.h": "727421b5140feb58b8ebe3c8228d5ec3533244a943d6335878a1b36d6d2d7ff2",
+    "experiments/original-kit/presets.c": "e06cce2b968c557e751c06cd6f0f50d317974c2a55df9bcd215f6961d1acd92f",
+    "experiments/original-kit/presets.h": "9a0d76914619bde4d8823c0e98bab9b03d783fc8a2e5a9a11c5d1322b6eb01a9",
+    "experiments/original-kit/shells.c": "7f511f64eeb51e16388473bfd89f1051e00a5c98341fa248f8ed846c3dce94e4",
+    "experiments/original-kit/shells.h": "5a050b22c83c92ee951195cd6f88a68c8f9b3b375ac42235e744c67f8d3aeafe"
+  }
+}

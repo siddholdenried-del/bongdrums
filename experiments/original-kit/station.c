@@ -35,7 +35,10 @@ void station_init(Station *s)
     memset(s->shape_x1, 0, sizeof s->shape_x1); memset(s->shape_mode, 0, sizeof s->shape_mode);
     memset(s->shape_drive, 0, sizeof s->shape_drive);
     s->mute_mask = 0;
-    for (unsigned i = 0; i < KIT_PADS; ++i) s->lane_level[i] = LANE_RAMP;
+    for (unsigned i = 0; i < KIT_PADS; ++i) {
+        s->lane_level[i] = LANE_RAMP;
+        s->recipe_gain[i] = s->strike_gain[i] = 1.f;
+    }
     const KitPatch patch = kit_default_patch();
     for (unsigned i = 0; i < KIT_PADS; ++i) s->patch[i] = patch;
 }
@@ -249,6 +252,7 @@ void station_trigger(Station *s, int pad, float velocity)
         const int base = kit_param_get(&shifted, pad, k);
         kit_param_set(&shifted, pad, k, base + (int)(swing < 0 ? swing - .5f : swing + .5f));
     }
+    s->strike_gain[pad-1] = s->recipe_gain[pad-1];
     capture_shaping(s, pad, changed ? &shifted : patch);
     kit_hit(&s->kit, pad, velocity, changed ? &shifted : patch);
 }
@@ -267,6 +271,11 @@ void station_render(Station *s, float *left, float *right, unsigned n)
                                           (accents & 1) ? STATION_ACCENT : STATION_VELOCITY);
         kit_render_active_lanes(&s->kit, s->samples, lanes, span);
         render_shaping(s, lanes, span);
+        for (unsigned p=0;p<KIT_PADS;++p) {
+            const float gain=s->strike_gain[p];
+            if (lanes[p] && gain!=1.f)
+                for (unsigned i=0;i<span;++i) lanes[p][i]*=gain;
+        }
         /* Render triggers and envelopes even while muted. Gate the lane going
            into both dry and sends; existing shared returns ring naturally. */
         for (unsigned pad = 0; pad < KIT_PADS; ++pad) {

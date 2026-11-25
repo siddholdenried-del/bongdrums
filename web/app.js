@@ -338,9 +338,11 @@ function selectVoice(p){
 const PAGE_NAMES={1:["BODY","TRANSIENT"],2:["BODY","WIRES"],3:["BODY"],4:["BODY"],5:["BODY"],6:["BODY"],7:["METAL"],8:["METAL"],9:["METAL"],10:["OSC","SWEEP"],11:["OSC","SWEEP"]};
 const PAGE_SPLIT={1:4,2:3,10:4,11:4};
 function deskPages(p){
-  const n=patchStore.bd_params(p),voice=[...Array(n-2).keys()],split=PAGE_SPLIT[p]||4,names=PAGE_NAMES[p];
+  const n=patchStore.bd_params(p),shaping=p===2?5:p>=10?6:n-2;
+  const voice=[...Array(shaping).keys()],split=PAGE_SPLIT[p]||4,names=PAGE_NAMES[p];
+  if(p===2)voice.push(7);
   const pages=[];for(let i=0,j=0;i<voice.length;i+=split,j++)pages.push({name:names[Math.min(j,names.length-1)],ks:voice.slice(i,i+split)});
-  pages.push({name:"FILTER",ks:[n-2,n-1]});return pages;
+  pages.push({name:"FILTER",ks:p>=10?[shaping,shaping+1,8,9]:[shaping,shaping+1]});return pages;
 }
 const pageOf={};let deskFocus=0;
 function updateDeckReadbacks(){
